@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#fbf7f3" />
+    <meta name="description" content="SpaSegBench — an evidence-first benchmark and recommender for spatial cell segmentation methods." />
+    <title>SpaSegBench — Cell Segmentation Leaderboard</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23fffdfc' stroke='%23e9e1da' stroke-width='3'/%3E%3Ccircle cx='25' cy='24' r='12' fill='none' stroke='%235865e8' stroke-width='4'/%3E%3Ccircle cx='41' cy='34' r='12' fill='none' stroke='%23c98d67' stroke-width='4'/%3E%3Ccircle cx='24' cy='43' r='10' fill='none' stroke='%23969a97' stroke-width='4'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="site-header">
+        <div class="nav-shell">
+          <a class="brand" href="#/" data-route="leaderboard" aria-label="SpaSegBench leaderboard">
+            <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span>SpaSegBench</span>
+          </a>
+          <button class="mobile-nav-toggle" data-action="mobile-menu" aria-label="Open navigation" aria-expanded="false">☰</button>
+          <nav id="primary-nav" class="primary-nav" aria-label="Primary navigation">
+            <a href="#/" data-route="leaderboard">Leaderboard</a>
+            <a href="#/explore" data-route="explore">Explore</a>
+            <a href="#/recommend" data-route="recommend" class="nav-recommend">Recommend</a>
+          </nav>
+          <div class="nav-actions">
+            <button class="about-link" data-action="about">About</button>
+            <a class="github-link" href="https://github.com" target="_blank" rel="noreferrer">GitHub <span>↗</span></a>
+          </div>
+        </div>
+      </header>
+      <main id="main-content"></main>
+      <footer class="site-footer"><div class="footer-shell"><span>SpaSegBench</span><span class="footer-copy">Evidence-first benchmarking for spatial cell segmentation.</span><span class="footer-copy">Demo snapshot · Sep 2026</span></div></footer>
+    </div>
+    <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
+    <aside id="detail-drawer" class="detail-drawer" aria-label="Details" aria-hidden="true"></aside>
+    <div id="about-modal" class="modal-backdrop" hidden><section class="about-modal" role="dialog" aria-modal="true" aria-label="About SpaSegBench"><button class="drawer-close" data-action="close-about" aria-label="Close about">×</button><span class="eyebrow">About SpaSegBench</span><h2>A benchmark you can inspect.</h2><p>SpaSegBench keeps image-based and molecule-based results separate, preserves provenance and makes uncertainty visible.</p><div class="about-grid"><div><strong>13</strong><span>Methods</span></div><div><strong>23</strong><span>Datasets</span></div><div><strong>2</strong><span>Tracks</span></div><div><strong>0</strong><span>Learned layers active</span></div></div><div class="about-note"><strong>Layer 3 is gated by design.</strong><br />Current evidence supports stratified defaults and equivalence bands, not a learned predictor.</div></section></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
