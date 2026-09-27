@@ -635,3 +635,51 @@ body { font-size: 16px; background: var(--bg); }
   .omics-table col.coverage-col, .omics-table th:nth-child(5), .omics-table td:nth-child(5) { display: none; }
   .omics-table col.score-col { width: 62px; }
 }
+
+/* One evidence table; rankings and scores remain track-specific. */
+.combined-coverage-section { margin-top: 25px; }
+.combined-coverage-chart { min-width: 1500px; }
+.combined-coverage-chart .bar-item { min-width: 77px; }
+.unified-ranking { margin-top: 26px; }
+.unified-ranking-note { margin: -2px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.unified-table { min-width: 980px; }
+.unified-table col.rank-col { width: 78px; }
+.unified-table col.method-col { width: 220px; }
+.unified-table col.score-col { width: 120px; }
+.unified-table col.track-col { width: 90px; }
+.unified-table col.support-col { width: 245px; }
+.unified-table col.coverage-col { width: 90px; }
+.unified-table col.caveat-col { width: 205px; }
+.unified-table th:nth-child(2), .unified-table td:nth-child(2) { position: static; }
+.unified-table th:nth-child(4), .unified-table td:nth-child(4),
+.unified-table th:nth-child(5), .unified-table td:nth-child(5),
+.unified-table th:nth-child(7), .unified-table td:nth-child(7) { text-align: left; }
+.unified-table .unified-group th { height: 40px; padding: 0 12px; border-top: 1px solid var(--border); background: #eef5fc; color: var(--text); text-align: left; font-size: 12px; letter-spacing: 0; text-transform: none; }
+.unified-table .unified-group small { margin-left: 11px; color: var(--muted); font-size: 11px; font-weight: 400; }
+.unified-table .unified-empty td { height: 50px; color: var(--muted); text-align: left; }
+.unified-score strong, .unified-score small { display: block; }
+.unified-score strong { color: var(--indigo); font-size: 14px; }
+.unified-score small { margin-top: 2px; color: var(--muted); font-size: 10px; }
+.track-pill { display: inline-flex; padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 650; }
+.track-pill.image { color: #235f9d; background: #e9f3ff; }
+.track-pill.molecule { color: #77573e; background: #f8efe4; }
+.unified-table .unified-support, .unified-table .unified-caveat { color: var(--text-2); font-size: 11px; }
+.unified-ranking.is-all .unified-table .coverage-heading, .unified-ranking.is-all .unified-table .unified-coverage { color: var(--indigo); font-weight: 750; }
+@media (max-width: 700px) {
+  .leaderboard-page .track-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .leaderboard-page .track-tab:first-child { grid-column: 1 / -1; }
+  .unified-table { min-width: 0; width: 100%; }
+  .unified-table col.rank-col { width: 46px; }
+  .unified-table col.method-col { width: auto; }
+  .unified-table col.score-col { width: 78px; }
+  .unified-table col.track-col, .unified-table col.support-col, .unified-table col.coverage-col, .unified-table col.caveat-col,
+  .unified-table th:nth-child(n+4), .unified-table td:nth-child(n+4) { display: none; }
+  .unified-table th:nth-child(3), .unified-table td:nth-child(3) { display: table-cell; text-align: right; }
+  .unified-ranking.is-all .unified-table col.score-col,
+  .unified-ranking.is-all .unified-table th:nth-child(3), .unified-ranking.is-all .unified-table td:nth-child(3) { display: none; }
+  .unified-ranking.is-all .unified-table col.coverage-col { display: table-column; width: 75px; }
+  .unified-ranking.is-all .unified-table th:nth-child(6), .unified-ranking.is-all .unified-table td:nth-child(6) { display: table-cell; text-align: right; }
+  .unified-table .unified-group th, .unified-table .unified-empty td { display: table-cell; }
+  .unified-table .unified-group small { display: block; margin: 2px 0 0; }
+  .unified-ranking .overview-head p { display: block; text-align: left; }
+}

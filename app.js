@@ -41,7 +41,7 @@ const state = {
   exploreFilter: 'All',
   recommendMode: 'quick',
   recommendVisible: false,
-  recommend: { platform: 'Xenium', tissue: 'Breast', goal: 'Quantification', prior: true, track: 'Molecule', target: 'Whole cell', transcriptDensity: '1.8', transcripts: '32000000', genes: '313', nnDistance: '6.4', gpu: 'Available', memory: '64', runtime: '6', priority: 'Generalization' },
+  recommend: { platform: 'Xenium', tissue: 'Breast', goal: 'Quantification', prior: true, track: 'Omics / multimodal', target: 'Whole cell', transcriptDensity: '1.8', transcripts: '32000000', genes: '313', nnDistance: '6.4', gpu: 'Available', memory: '64', runtime: '6', priority: 'Generalization' },
   drawer: null,
   highlighted: null,
   sortKey: 'score',
@@ -71,6 +71,7 @@ const currentRoute = () => {
 const imageMethods = () => methods.filter((m) => m.track === 'image');
 const moleculeMethods = () => methods.filter((m) => m.track === 'molecule');
 const familyClass = (m) => m.family === 'Foundation' ? 'foundation' : m.family === 'Nucleus' ? 'nucleus' : m.family === 'Domain-specific' ? 'domain' : '';
+const displayTrack = (track) => track === 'image' ? 'Image' : 'Omics / multimodal';
 const icon = (kind) => ({ microscope: '◌', spatial: '⌘', nucleus: '●', whole: '◯', speed: '↯', memory: '▤', target: '◎', layers: '▦' }[kind] || '·');
 
 const filterDefs = [
@@ -163,14 +164,17 @@ function scoreMetric(m) {
 
 function methodBar(m, value, compact, metric = 'Overall score') {
   const isResource = metric === 'Speed' || metric === 'VRAM';
-  const max = metric === 'Speed' ? 4 : metric === 'VRAM' ? 14 : metric === 'Coverage' ? 5 : 1;
+  const isCombinedCoverage = metric === 'Coverage' && state.leaderboardTrack === 'all';
+  const max = metric === 'Speed' ? 4 : metric === 'VRAM' ? 14 : metric === 'Coverage' ? Math.max(...(isCombinedCoverage ? methods : moleculeMethods()).map((method) => method.datasets)) : 1;
   const label = metric === 'Coverage' ? value + ' sets' : isResource ? (value == null ? '—' : value.toFixed(1) + (metric === 'Speed' ? ' s' : ' GB')) : pct(value);
   const height = Math.max(8, Math.round((value || 0) / max * (compact ? 76 : 132)));
+  const color = isCombinedCoverage ? (m.track === 'image' ? 'var(--indigo)' : 'var(--warm)') : m.family === 'Foundation' ? 'var(--indigo)' : m.family === 'Nucleus' ? 'var(--taupe)' : m.family === 'Domain-specific' ? 'var(--warm)' : 'var(--sage)';
+  const caption = isCombinedCoverage ? (m.track === 'image' ? 'Image' : 'Omics / multimodal') : m.family;
   return h(
     '<button class="bar-item ', state.highlighted === m.id ? 'highlighted' : '', '" data-action="open-method" data-id="', m.id, '" title="', esc(m.name + ' · ' + metric + ' ' + label + ' · ' + m.datasets + ' datasets tested' + (m.simulated ? ' · preview data' : '')), '">',
     '<span class="bar-score">', label, '</span>',
-    '<span class="method-bar" style="height:', height, 'px;background:', m.family === 'Foundation' ? 'var(--indigo)' : m.family === 'Nucleus' ? 'var(--taupe)' : m.family === 'Domain-specific' ? 'var(--warm)' : 'var(--sage)', '"></span>',
-    '<span class="bar-label">', esc(m.name), m.simulated ? ' *' : '', '</span><span class="bar-family">', esc(m.family), '</span></button>'
+    '<span class="method-bar" style="height:', height, 'px;background:', color, '"></span>',
+    '<span class="bar-label">', esc(m.name), m.simulated ? ' *' : '', '</span><span class="bar-family">', esc(caption), '</span></button>'
   );
 }
 
@@ -248,15 +252,17 @@ function renderLeaderboard() {
   const trackTabs = [
     ['all', 'All methods', imageCount + moleculeCount],
     ['image', 'Image-based', imageCount],
-    ['molecule', 'Omics-based', moleculeCount]
+    ['molecule', 'Omics / multimodal', moleculeCount]
   ];
   return h(
     '<div class="page leaderboard-page">',
-    '<section class="leaderboard-heading"><div class="leaderboard-intro"><div class="eyebrow">Spatial cell segmentation benchmark <span class="version-tag">V10</span></div><h1>Cell Segmentation Leaderboard <span class="beta">BETA</span></h1><p class="subcopy">Compare image-based and omics-based segmentation methods with their scores, coverage and caveats.</p><div class="heading-side">', imageCount + moleculeCount, ' methods <span>·</span> 2 evidence tracks <span>·</span> Demo snapshot, Sep 2026</div></div><div class="leaderboard-logo-frame"><img class="leaderboard-logo" src="assets/spasegbench-logo.png" width="176" height="124" alt="SpaSegBench logo"></div></section>',
+    '<section class="leaderboard-heading"><div class="leaderboard-intro"><div class="eyebrow">Spatial cell segmentation benchmark <span class="version-tag">V10</span></div><h1>Cell Segmentation Leaderboard <span class="beta">BETA</span></h1><p class="subcopy">Compare image-based and omics or multimodal segmentation methods with their scores, coverage and caveats.</p><div class="heading-side">', imageCount + moleculeCount, ' methods <span>·</span> 2 evidence tracks <span>·</span> Demo snapshot, Sep 2026</div></div><div class="leaderboard-logo-frame"><img class="leaderboard-logo" src="assets/spasegbench-logo.png" width="176" height="124" alt="SpaSegBench logo"></div></section>',
     '<nav class="track-tabs" aria-label="Leaderboard method tracks">', trackTabs.map(([id, label, count]) => '<button class="track-tab ' + (state.leaderboardTrack === id ? 'active' : '') + '" data-action="leaderboard-track" data-value="' + id + '" aria-pressed="' + (state.leaderboardTrack === id) + '">' + label + '<span>' + count + '</span></button>').join(''), '</nav>',
-    '<p class="track-note">Image and omics results use different metrics and are ranked within their own tracks.</p>',
-    state.leaderboardTrack !== 'molecule' ? renderImageLeaderboard() : '',
-    state.leaderboardTrack !== 'image' ? renderMoleculeLeaderboard() : '',
+    '<p class="track-note">', state.leaderboardTrack === 'all' ? 'All methods are ordered by dataset coverage. Select a track to rank by its own metrics.' : 'This track is ranked by its selected metric. Return to All methods for the shared coverage ranking.', '</p>',
+    state.leaderboardTrack === 'all' ? renderUnifiedCoverageChart() : '',
+    state.leaderboardTrack === 'image' ? renderImageLeaderboard() : '',
+    state.leaderboardTrack === 'molecule' ? renderMoleculeLeaderboard() : '',
+    renderCoverageRanking(),
     '</div>'
   );
 }
@@ -278,23 +284,7 @@ function renderImageLeaderboard() {
     '</div></div><div class="active-filter-row"><strong>', rows.length, ' matching methods</strong>', activeFilters.map(([key, label, value]) => '<button class="active-filter" data-action="remove-filter" data-filter="' + key + '">' + esc(label + ': ' + value) + ' <span aria-hidden="true">×</span></button>').join(''), activeFilters.length ? '<button class="clear-filters" data-action="clear-filters">Clear all</button>' : '', '</div></div>',
     '<section class="overview-section"><div class="overview-head"><div><span class="section-kicker">VISUAL COMPARISON</span><h3 class="section-title">Image method overview</h3></div><button class="overview-toggle" data-action="toggle-overview" aria-expanded="', state.overviewOpen, '">', state.overviewOpen ? 'Hide chart −' : 'Show chart +', '</button></div>',
     state.overviewOpen ? (rows.length ? h('<p class="chart-caption">', esc(metric), ' · ', chartNote, ' · * preview data</p><div class="overview-scroll"><div class="overview-chart">', chartRows.map((m) => methodBar(m, scoreMetric(m), false, metric)).join(''), '</div></div><div class="overview-foot"><span class="legend"><span class="legend-label"><i class="legend-dot"></i> General</span><span class="legend-label"><i class="legend-dot indigo"></i> Foundation</span><span class="legend-label"><i class="legend-dot taupe"></i> Nucleus</span><span class="legend-label"><i class="legend-dot warm"></i> Domain-specific</span></span></div>') : '<p class="chart-caption">No matching methods to display.</p>') : '',
-    '</section>',
-    '<section class="leaderboard-section"><div class="overview-head"><div><span class="section-kicker">EVIDENCE TABLE</span><h3 class="section-title">Image ranking</h3></div><p>Scores are comparable only within the image track. Preview values are simulated.</p></div>',
-    rows.length ? renderLeaderboardTable(rows) : '<div class="empty-state"><strong>No methods match these filters.</strong><span>Adjust your conditions or clear all filters.</span><button class="clear-filters" data-action="clear-filters">Clear all filters</button></div>',
     '</section></div>'
-  );
-}
-
-function renderLeaderboardTable(rows) {
-  const sorted = sortedImageMethods(rows);
-  const sortHeader = (key, label, hint = '') => '<button class="sort-button ' + (state.sortKey === key ? 'is-sorted' : '') + '" data-action="sort" data-sort="' + key + '" title="' + esc(hint) + '" aria-label="Sort by ' + esc(label) + '">' + label + '<span aria-hidden="true">' + (state.sortKey === key ? (state.sortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕') + '</span></button>';
-  return h(
-    '<div class="table-shell"><table class="leaderboard-table"><colgroup><col class="rank-col"><col class="method-col"><col class="score-col"><col class="metric-col"><col class="metric-col"><col class="metric-col"><col class="speed-col"><col class="vram-col"><col class="coverage-col"></colgroup><thead><tr><th>Rank</th><th>Method</th><th>', sortHeader('score', 'Overall', 'Normalized overall score'), '</th><th>', sortHeader('pq', 'PQ', 'Panoptic Quality'), '</th><th>', sortHeader('dice', 'Dice', 'Dice overlap score'), '</th><th>', sortHeader('ap50', 'AP50', 'Average Precision at 50% overlap'), '</th><th>', sortHeader('speed', 'Runtime (s)', 'Lower is better'), '</th><th>', sortHeader('vram', 'VRAM (GB)', 'Lower is better'), '</th><th>Coverage</th></tr></thead><tbody>',
-    sorted.map((m, index) => {
-      const focused = state.highlighted === m.id ? ' row-highlight' : '';
-      return '<tr class="' + focused.trim() + '" data-method-row="' + m.id + '"><td>' + (index + 1) + '</td><td><button class="method-button" data-action="open-method" data-id="' + m.id + '"><i class="method-orb ' + familyClass(m) + '"></i><span><strong>' + esc(m.name) + (m.simulated ? ' <em class="preview-badge">Preview</em>' : '') + '</strong><small>' + esc(m.family) + '</small></span></button></td><td class="main-score">' + pct(scoreFor(m)) + '</td><td>' + num(m.pq, 2) + '</td><td>' + num(m.dice, 2) + '</td><td>' + num(m.ap50, 2) + '</td><td>' + (m.speed == null ? '—' : m.speed.toFixed(1)) + '</td><td>' + (m.vram == null ? '—' : m.vram.toFixed(1)) + '</td><td>' + m.datasets + ' sets</td></tr>';
-    }).join(''),
-    '</tbody></table></div><div class="table-foot"><span><strong>' + sorted.length + ' methods</strong> · image track · comparable groups only</span><span>Preview-tagged methods use simulated values until benchmark data is uploaded.</span></div>'
   );
 }
 
@@ -315,27 +305,79 @@ function renderMoleculeLeaderboard() {
   const metric = state.moleculeFilters.metric;
   const orderedBy = state.moleculeSortKey === 'datasets' ? 'coverage' : 'utility';
   return h(
-    '<div class="track-content molecule-track-content"><div class="track-section-heading"><span class="track-index">02 / OMICS TRACK</span><h2>Omics-based methods</h2><p>Nine molecule-based methods for spatial transcriptomics. Scores are kept separate from image-based results.</p></div>',
+    '<div class="track-content molecule-track-content"><div class="track-section-heading"><span class="track-index">02 / OMICS / MULTIMODAL TRACK</span><h2>Omics or multimodal methods</h2><p>Nine methods using omics data, multimodal inputs or platform context. Scores are kept separate from image-based results.</p></div>',
     '<div class="category-tabs">', tabs.map((tab) => '<button class="category-tab ' + (state.moleculeTab === tab ? 'active' : '') + '" data-action="molecule-category" data-value="' + tab + '">' + tab + '</button>').join(''), '</div>',
     '<div class="filter-panel"><div class="filter-row">', moleculeFilterDefs.map(renderMoleculeFilter).join(''), renderMoleculeMore(), '</div>',
     '<div class="quick-picks"><span class="quick-label">Quick picks</span><div class="quick-chip-row">',
     [['best-utility', 'Best utility'], ['broad-coverage', 'Broad coverage'], ['no-prior', 'No platform prior'], ['gpu-optional', 'GPU optional']].map(([id, label]) => '<button class="quick-chip ' + (state.moleculeQuickPick === id ? 'active' : '') + '" data-action="molecule-quick-pick" data-value="' + id + '">' + label + '</button>').join(''),
     '</div></div><div class="active-filter-row"><strong>', rows.length, ' matching methods</strong>', activeFilters.map(([key, label, value]) => '<button class="active-filter" data-action="remove-molecule-filter" data-filter="' + key + '">' + esc(label + ': ' + value) + ' <span aria-hidden="true">×</span></button>').join(''), state.moleculeTab !== 'Overall' || activeFilters.length || state.moleculeQuickPick ? '<button class="clear-filters" data-action="clear-molecule-filters">Clear all</button>' : '', '</div></div>',
-    '<section class="overview-section"><div class="overview-head"><div><span class="section-kicker">VISUAL COMPARISON</span><h3 class="section-title">Omics method overview</h3></div><span class="chart-direction">', metric, ' · higher is better</span></div>',
+    '<section class="overview-section"><div class="overview-head"><div><span class="section-kicker">VISUAL COMPARISON</span><h3 class="section-title">Omics / multimodal overview</h3></div><span class="chart-direction">', metric, ' · higher is better</span></div>',
     rows.length ? h('<p class="chart-caption">', metric === 'Coverage' ? 'Datasets in the demo snapshot' : 'Normalized utility within the molecule track', ' · ordered by ', orderedBy, ' · * preview data</p><div class="overview-scroll"><div class="overview-chart omics-chart">', rows.map((m) => methodBar(m, metric === 'Coverage' ? m.datasets : m.overall, false, metric)).join(''), '</div></div><div class="overview-foot"><span class="legend"><span class="legend-label"><i class="legend-dot"></i> General</span><span class="legend-label"><i class="legend-dot warm"></i> Domain-specific</span></span></div>') : '<div class="empty-state"><strong>No methods match these filters.</strong><span>Adjust the omics conditions or clear all filters.</span><button class="clear-filters" data-action="clear-molecule-filters">Clear all filters</button></div>',
-    '</section>',
-    '<section class="leaderboard-section"><div class="overview-head"><div><span class="section-kicker">EVIDENCE TABLE</span><h3 class="section-title">Omics ranking</h3></div><p>F1 is reported for reference; prior-dependent detection evidence is excluded from utility.</p></div>',
-    rows.length ? renderMoleculeTable(rows) : '<div class="empty-state"><strong>No matching omics methods.</strong><span>Clear a filter to see the ranking.</span></div>',
     '</section></div>'
   );
 }
 
-function renderMoleculeTable(rows) {
-  const sortHeader = (key, label) => '<button class="sort-button ' + (state.moleculeSortKey === key ? 'is-sorted' : '') + '" data-action="sort-molecule" data-sort="' + key + '" aria-label="Sort omics methods by ' + label + '">' + label + '<span aria-hidden="true">' + (state.moleculeSortKey === key ? (state.moleculeSortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕') + '</span></button>';
+function allCoverageRows() {
+  return methods.slice().sort((a, b) => b.datasets - a.datasets || a.name.localeCompare(b.name));
+}
+
+function renderUnifiedCoverageChart() {
+  const rows = allCoverageRows();
   return h(
-    '<div class="table-shell"><table class="leaderboard-table omics-table"><colgroup><col class="rank-col"><col class="method-col"><col class="score-col"><col class="metric-col"><col class="coverage-col"><col class="prior-col"><col class="evidence-col"></colgroup><thead><tr><th>Rank</th><th>Method</th><th>', sortHeader('overall', 'Utility'), '</th><th title="F1 is reported for reference, not used to rank methods">F1*</th><th>', sortHeader('datasets', 'Coverage'), '</th><th>Platform prior</th><th>Evidence note</th></tr></thead><tbody>',
-    rows.map((m, index) => '<tr><td>' + (index + 1) + '</td><td><button class="method-button" data-action="open-method" data-id="' + m.id + '"><i class="method-orb ' + familyClass(m) + '"></i><span><strong>' + esc(m.name) + (m.simulated ? ' <em class="preview-badge">Preview</em>' : '') + '</strong><small>' + esc(m.family) + '</small></span></button></td><td class="main-score">' + pct(m.overall) + '</td><td>' + num(m.f1, 3) + '</td><td>' + m.datasets + ' sets</td><td>' + (m.prior ? '<span class="prior-pill">Used</span>' : 'No') + '</td><td class="evidence-note">' + esc(m.simulated ? 'Simulated values' : m.prior ? 'Detection masked' : m.notes) + '</td></tr>').join(''),
-    '</tbody></table></div><div class="table-foot"><span><strong>', rows.length, ' methods</strong> · omics track · ranked by ', state.moleculeSortKey === 'datasets' ? 'coverage' : 'normalized utility', '</span><span>* F1 is report-only. Preview-tagged values are simulated.</span></div>'
+    '<section class="overview-section combined-coverage-section"><div class="overview-head"><div><span class="section-kicker">SHARED INDICATOR</span><h3 class="section-title">Dataset coverage across all methods</h3></div><span class="chart-direction">More datasets · broader evidence</span></div>',
+    '<p class="chart-caption">Dataset counts come from the demo snapshot. They indicate coverage, not segmentation quality across tracks.</p>',
+    '<div class="overview-scroll"><div class="overview-chart combined-coverage-chart">', rows.map((m) => methodBar(m, m.datasets, false, 'Coverage')).join(''), '</div></div>',
+    '<div class="overview-foot"><span class="legend"><span class="legend-label"><i class="legend-dot indigo"></i> Image-based</span><span class="legend-label"><i class="legend-dot warm"></i> Omics / multimodal</span></span></div></section>'
+  );
+}
+
+function rankingMetricValue(m, all) {
+  if (all) return pct(m.track === 'image' ? m.score : m.overall);
+  if (m.track === 'molecule') return state.moleculeFilters.metric === 'Coverage' ? m.datasets + ' sets' : pct(m.overall);
+  const metric = state.filters.metric;
+  if (metric === 'Speed') return num(m.speed, 1) + ' s';
+  if (metric === 'VRAM') return num(m.vram, 1) + ' GB';
+  if (metric === 'Overall score') return pct(scoreFor(m));
+  return num(scoreMetric(m), 2);
+}
+
+function renderCoverageRanking() {
+  const all = state.leaderboardTrack === 'all';
+  const rows = all ? allCoverageRows() : state.leaderboardTrack === 'image' ? sortedImageMethods(filteredImageMethods()) : sortedMoleculeMethods(filteredMoleculeMethods());
+  const imageCount = rows.filter((m) => m.track === 'image').length;
+  const moleculeCount = rows.length - imageCount;
+  const summary = all ? imageCount + ' image · ' + moleculeCount + ' omics / multimodal' : rows.length + ' matching methods';
+  const note = all
+    ? 'Sorted by dataset coverage, the indicator available for both tracks. This is an evidence-coverage ranking, not a cross-track performance ranking. Equal counts share a rank.'
+    : state.leaderboardTrack === 'image'
+      ? 'Image methods follow the selected image metric. Scores and rank apply within the image track.'
+      : 'Omics / multimodal methods follow the selected track metric. Scores and rank apply within this track.';
+  let previousCoverage = null;
+  let coverageRank = 0;
+  const body = rows.length ? rows.map((m, index) => {
+    const isImage = m.track === 'image';
+    if (all && m.datasets !== previousCoverage) coverageRank = index + 1;
+    previousCoverage = m.datasets;
+    const rank = all ? coverageRank : index + 1;
+    const metric = isImage ? state.filters.metric : state.moleculeFilters.metric;
+    const displayValue = rankingMetricValue(m, all);
+    const metricLabel = all ? (isImage ? 'Image overall' : 'Omics utility') : metric;
+    const support = isImage ? 'PQ ' + num(m.pq, 2) + ' · Dice ' + num(m.dice, 2) + ' · AP50 ' + num(m.ap50, 2) : 'F1* ' + num(m.f1, 3);
+    const caveat = m.simulated ? 'Preview · simulated values' : !isImage && m.prior ? 'Platform prior · detection masked' : isImage ? 'Runtime ' + num(m.speed, 1) + ' s · VRAM ' + num(m.vram, 1) + ' GB' : 'No platform prior';
+    const trackLabel = isImage ? 'Image' : 'Omics / multimodal';
+    return h(
+      '<tr data-method-row="', m.id, '" class="', state.highlighted === m.id ? 'row-highlight' : '', '"><td class="unified-rank">', rank, '</td>',
+      '<td><button class="method-button" data-action="open-method" data-id="', m.id, '"><i class="method-orb ', familyClass(m), '"></i><span><strong>', esc(m.name), m.simulated ? ' <em class="preview-badge">Preview</em>' : '', '</strong><small>', esc(all ? trackLabel + ' · ' + m.family : m.family), '</small></span></button></td>',
+      '<td class="unified-score"><strong>', displayValue, '</strong><small>', esc(metricLabel), '</small></td>',
+      '<td><span class="track-pill ', isImage ? 'image' : 'molecule', '">', trackLabel, '</span></td>',
+      '<td class="unified-support">', esc(support), '</td><td class="unified-coverage">', m.datasets, ' sets</td><td class="unified-caveat">', esc(caveat), '</td></tr>'
+    );
+  }).join('') : '<tr class="unified-empty"><td colspan="7">No methods match these filters. Adjust or clear the selected track’s filters.</td></tr>';
+  return h(
+    '<section class="leaderboard-section unified-ranking ', all ? 'is-all' : '', '" id="unified-ranking"><div class="overview-head"><div><span class="section-kicker">COMBINED LEADERBOARD</span><h3 class="section-title">', all ? 'All methods · coverage ranking' : state.leaderboardTrack === 'image' ? 'Image method ranking' : 'Omics / multimodal ranking', '</h3></div><p>', summary, '</p></div>',
+    '<p class="unified-ranking-note">', note, '</p>',
+    '<div class="table-shell"><table class="leaderboard-table unified-table"><colgroup><col class="rank-col"><col class="method-col"><col class="score-col"><col class="track-col"><col class="support-col"><col class="coverage-col"><col class="caveat-col"></colgroup><thead><tr><th scope="col">Rank</th><th scope="col">Method</th><th scope="col">', all ? 'Track score' : 'Selected metric', '</th><th scope="col">Track</th><th scope="col">Supporting metrics</th><th scope="col" class="coverage-heading">Coverage', all ? ' ↓' : '', '</th><th scope="col">Evidence note</th></tr></thead><tbody>', body,
+    '</tbody></table></div><div class="table-foot"><span><strong>', rows.length, ' methods shown</strong> · ', all ? 'ranked by dataset coverage' : 'ranked within the selected track', '</span><span>* F1 is report-only. Preview-tagged values are simulated.</span></div></section>'
   );
 }
 
@@ -351,7 +393,7 @@ function renderExplore() {
     const matchesQuery = !q || (d.name + ' ' + d.modality + ' ' + d.tissue).toLowerCase().includes(q);
     const matchesFilter = state.exploreFilter === 'All' ||
       (state.exploreFilter === 'Image track' && d.track === 'image') ||
-      (state.exploreFilter === 'Molecule track' && d.track === 'molecule') ||
+      (state.exploreFilter === 'Omics / multimodal track' && d.track === 'molecule') ||
       (state.exploreFilter === 'Spatial transcriptomics' && d.modality === 'Spatial transcriptomics');
     return matchesQuery && matchesFilter;
   });
@@ -360,18 +402,18 @@ function renderExplore() {
     '<div class="page"><section class="explore-header"><div><div class="eyebrow">Browse the evidence <span class="version-tag">V10</span></div><h1>Explore</h1><p class="subcopy">Find a method or dataset, then inspect its evidence and limits.</p></div></section>',
     '<div class="explore-tabs"><button class="explore-tab ' + (state.exploreTab === 'Methods' ? 'active' : '') + '" data-action="explore-tab" data-value="Methods">Methods</button><button class="explore-tab ' + (state.exploreTab === 'Datasets' ? 'active' : '') + '" data-action="explore-tab" data-value="Datasets">Datasets</button></div>',
     '<div class="explore-toolbar"><input id="explore-search" class="explore-search" type="search" placeholder="Search methods or datasets" value="' + esc(state.exploreQuery) + '" /><div class="explore-filters">',
-    (state.exploreTab === 'Methods' ? methodFilters : ['All', 'Image track', 'Molecule track', 'Spatial transcriptomics']).map((value) => '<button class="explore-filter ' + (state.exploreFilter === value ? 'active' : '') + '" data-action="explore-filter" data-value="' + value + '">' + value + '</button>').join(''),
-    '</div></div><div class="explore-result-count">', list.length, ' matching ', state.exploreTab.toLowerCase(), state.exploreTab === 'Methods' ? ' · Image and molecule scores are separate' : '', '</div>',
+    (state.exploreTab === 'Methods' ? methodFilters : ['All', 'Image track', 'Omics / multimodal track', 'Spatial transcriptomics']).map((value) => '<button class="explore-filter ' + (state.exploreFilter === value ? 'active' : '') + '" data-action="explore-filter" data-value="' + value + '">' + value + '</button>').join(''),
+    '</div></div><div class="explore-result-count">', list.length, ' matching ', state.exploreTab.toLowerCase(), state.exploreTab === 'Methods' ? ' · Image and omics / multimodal scores are separate' : '', '</div>',
     state.exploreTab === 'Methods' ? renderMethodList(list) : renderDatasetList(list)
   , '</div>');
 }
 
 function renderMethodList(list) {
-  return list.length ? h('<div class="entity-row-head"><div>Method</div><div>Family</div><div>Track</div><div>Score</div><div></div></div><div class="entity-list">', list.map((m) => '<button class="entity-row" data-action="open-method" data-id="' + m.id + '"><div><span class="entity-name"><i class="method-orb ' + familyClass(m) + '"></i><span><strong>' + esc(m.name) + (m.simulated ? ' <em class="preview-badge">Preview</em>' : '') + '</strong><small>' + esc(m.short) + '</small></span></span></div><div class="entity-value">' + esc(m.family) + '</div><div class="entity-value">' + esc(m.track) + '</div><div class="entity-value score">' + pct(m.track === 'image' ? m.score : m.overall) + '</div><div class="entity-arrow">›</div></button>').join(''), '</div>') : '<div class="empty-state"><strong>No matching methods.</strong><span>Try a broader search.</span></div>';
+  return list.length ? h('<div class="entity-row-head"><div>Method</div><div>Family</div><div>Track</div><div>Score</div><div></div></div><div class="entity-list">', list.map((m) => '<button class="entity-row" data-action="open-method" data-id="' + m.id + '"><div><span class="entity-name"><i class="method-orb ' + familyClass(m) + '"></i><span><strong>' + esc(m.name) + (m.simulated ? ' <em class="preview-badge">Preview</em>' : '') + '</strong><small>' + esc(m.short) + '</small></span></span></div><div class="entity-value">' + esc(m.family) + '</div><div class="entity-value">' + esc(displayTrack(m.track)) + '</div><div class="entity-value score">' + pct(m.track === 'image' ? m.score : m.overall) + '</div><div class="entity-arrow">›</div></button>').join(''), '</div>') : '<div class="empty-state"><strong>No matching methods.</strong><span>Try a broader search.</span></div>';
 }
 
 function renderDatasetList(list) {
-  return list.length ? h('<div class="entity-row-head"><div>Dataset</div><div>Modality</div><div>Tissue</div><div>Track</div><div></div></div><div class="entity-list">', list.map((d) => '<button class="entity-row" data-action="open-dataset" data-id="' + d.id + '"><div><span class="entity-name"><i class="method-orb ' + (d.track === 'image' ? 'domain' : 'nucleus') + '"></i><span><strong>' + esc(d.name) + '</strong><small>' + esc(d.platform) + ' · ' + esc(d.species) + '</small></span></span></div><div class="entity-value">' + esc(d.modality) + '</div><div class="entity-value">' + esc(d.tissue) + '</div><div class="entity-value">' + esc(d.track) + '</div><div class="entity-arrow">›</div></button>').join(''), '</div>') : '<div class="empty-state"><strong>No matching datasets.</strong><span>Try a broader search.</span></div>';
+  return list.length ? h('<div class="entity-row-head"><div>Dataset</div><div>Modality</div><div>Tissue</div><div>Track</div><div></div></div><div class="entity-list">', list.map((d) => '<button class="entity-row" data-action="open-dataset" data-id="' + d.id + '"><div><span class="entity-name"><i class="method-orb ' + (d.track === 'image' ? 'domain' : 'nucleus') + '"></i><span><strong>' + esc(d.name) + '</strong><small>' + esc(d.platform) + ' · ' + esc(d.species) + '</small></span></span></div><div class="entity-value">' + esc(d.modality) + '</div><div class="entity-value">' + esc(d.tissue) + '</div><div class="entity-value">' + esc(displayTrack(d.track)) + '</div><div class="entity-arrow">›</div></button>').join(''), '</div>') : '<div class="empty-state"><strong>No matching datasets.</strong><span>Try a broader search.</span></div>';
 }
 
 function recommendField(key, label, type, options, placeholder) {
@@ -390,7 +432,7 @@ function recommendationContext() {
   const r = state.recommend;
   const quick = state.recommendMode === 'quick';
   const unsupported = quick && ['Stereo-seq', 'Other / Unseen'].includes(r.platform);
-  const track = quick ? (r.platform === 'CosMx' ? 'image' : 'molecule') : r.track.toLowerCase();
+  const track = quick ? (r.platform === 'CosMx' ? 'image' : 'molecule') : (r.track === 'Image' ? 'image' : 'molecule');
   let recs;
   if (track === 'image') {
     const order = r.target === 'Nucleus' ? ['stardist', 'cellpose-sam', 'cellsam', 'mesmer', 'cellotype'] :
@@ -413,7 +455,7 @@ function renderRecommendationResult() {
   if (context.unsupported) return '<section class="recommend-result"><div class="recommend-route-note"><span class="eyebrow">Expert input needed</span><h2>This platform is outside Quick Mode coverage.</h2><p>Switch to Expert Mode to combine platform context with measurable dataset parameters.</p><button class="find-button inline" data-action="recommend-mode" data-value="expert">Switch to Expert Mode →</button></div></section>';
   const imageTrack = context.track === 'image';
   return h(
-    '<section id="recommend-result" class="recommend-result"><div class="result-title"><div><span class="section-kicker">02 / SHORTLIST</span><h2>Methods to inspect</h2><p>', imageTrack ? 'Image-track' : 'Molecule-track', ' candidates from the current demo snapshot.</p></div><span class="beta">Rule-based shortlist</span></div>',
+    '<section id="recommend-result" class="recommend-result"><div class="result-title"><div><span class="section-kicker">02 / SHORTLIST</span><h2>Methods to inspect</h2><p>', imageTrack ? 'Image-based' : 'Omics / multimodal', ' candidates from the current demo snapshot.</p></div><span class="beta">Rule-based shortlist</span></div>',
     '<div class="recommend-cards">', context.recs.map((m, i) => '<article class="recommend-card"><span class="recommend-rank">0' + (i + 1) + '</span><div><h3>' + esc(m.name) + '</h3><p>' + esc(m.worksFor[0]) + ' · ' + esc(m.notes) + '</p><span>' + m.datasets + ' datasets' + (m.simulated ? ' · Preview values' : '') + (m.prior ? ' · Platform prior' : '') + '</span></div><button class="notes-button" data-action="open-method" data-id="' + m.id + '">Inspect evidence →</button></article>').join(''), '</div>',
     '<p class="recommend-caption">This demo rule set uses platform, track, target, prior availability, priority and GPU availability where applicable. Tissue, downstream goal and numeric parameters are recorded as context but do not affect this shortlist. Compare evidence and caveats before choosing a method.</p></section>'
   );
@@ -436,7 +478,7 @@ function renderRecommend() {
       '<div class="form-group-label">Dataset and task</div>',
       recommendField('platform', 'Platform', 'select', ['Xenium', 'MERFISH', 'CosMx', 'Stereo-seq', 'Visium HD', 'Other / Custom']),
       recommendField('tissue', 'Tissue', 'text', null, 'Free text accepted'),
-      recommendField('track', 'Benchmark track', 'select', ['Molecule', 'Image']),
+      recommendField('track', 'Benchmark track', 'select', ['Omics / multimodal', 'Image']),
       recommendField('target', 'Segmentation target', 'select', ['Whole cell', 'Nucleus']),
       recommendPriorToggle(),
       '<div class="form-group-label">Dataset measurements <span>Context only in this demo</span></div>',
@@ -473,7 +515,7 @@ function renderDrawer() {
     const image = item.track === 'image';
     const metricPairs = image ? [['Overall', item.score], ['PQ', item.pq], ['Dice', item.dice], ['AP50', item.ap50]] : [['Utility', item.overall || item.score], ['F1 · report only', item.f1]];
     drawer.innerHTML = h(
-      '<button class="drawer-close" data-action="close-drawer" aria-label="Close details">×</button><div class="drawer-head"><div class="eyebrow">', item.track, ' track · method</div><h2>', esc(item.name), '</h2><p>', esc(item.summary), '</p></div>',
+      '<button class="drawer-close" data-action="close-drawer" aria-label="Close details">×</button><div class="drawer-head"><div class="eyebrow">', displayTrack(item.track), ' track · method</div><h2>', esc(item.name), '</h2><p>', esc(item.summary), '</p></div>',
       '<div class="drawer-score-grid">', metricPairs.map(([label, value]) => '<div class="drawer-score"><strong>' + pct(value) + '</strong><span>' + label + '</span></div>').join(''), image ? '' : '<div class="drawer-score"><strong>' + item.datasets + '</strong><span>Datasets</span></div>', '</div>',
       '<section class="drawer-section"><h3>Reported metrics</h3><div class="drawer-bars">', metricPairs.map(([label, value]) => '<div class="drawer-bar-row"><span>' + label + '</span><span class="drawer-bar-track"><span style="width:' + Math.round((value || 0) * 100) + '%"></span></span><strong>' + pct(value) + '</strong></div>').join(''), '</div></section>',
       '<section class="drawer-section"><h3>Evidence coverage</h3><p class="drawer-coverage-copy">', item.datasets, ' dataset', item.datasets === 1 ? '' : 's', ' in this demo snapshot. Open dataset records in Explore for platform and tissue context.</p></section>',
@@ -485,10 +527,10 @@ function renderDrawer() {
   } else {
     const related = methods.filter((m) => m.track === item.track).slice(0, 5);
     drawer.innerHTML = h(
-      '<button class="drawer-close" data-action="close-drawer" aria-label="Close details">×</button><div class="drawer-head"><div class="eyebrow">', item.track, ' track · dataset</div><h2>', esc(item.name), '</h2><p>', esc(item.description), '</p></div>',
+      '<button class="drawer-close" data-action="close-drawer" aria-label="Close details">×</button><div class="drawer-head"><div class="eyebrow">', displayTrack(item.track), ' track · dataset</div><h2>', esc(item.name), '</h2><p>', esc(item.description), '</p></div>',
       '<div class="drawer-score-grid"><div class="drawer-score"><strong>', esc(item.platform), '</strong><span>Platform</span></div><div class="drawer-score"><strong>', esc(item.tissue), '</strong><span>Tissue</span></div><div class="drawer-score"><strong>', esc(item.species), '</strong><span>Species</span></div><div class="drawer-score"><strong>', esc(item.count), '</strong><span>Coverage</span></div></div>',
       '<section class="drawer-section"><h3>Methods on this dataset</h3><div class="drawer-pills">', related.map((m) => '<span class="drawer-pill">' + esc(m.name) + '</span>').join(''), '</div></section>',
-      '<section class="drawer-section"><h3>Dataset metadata</h3><div class="drawer-bars"><div class="drawer-bar-row"><span>Modality</span><span></span><strong>' + esc(item.modality) + '</strong></div><div class="drawer-bar-row"><span>Tissue</span><span></span><strong>' + esc(item.tissue) + '</strong></div><div class="drawer-bar-row"><span>Track</span><span></span><strong>' + esc(item.track) + '</strong></div></div></section>',
+      '<section class="drawer-section"><h3>Dataset metadata</h3><div class="drawer-bars"><div class="drawer-bar-row"><span>Modality</span><span></span><strong>' + esc(item.modality) + '</strong></div><div class="drawer-bar-row"><span>Tissue</span><span></span><strong>' + esc(item.tissue) + '</strong></div><div class="drawer-bar-row"><span>Track</span><span></span><strong>' + esc(displayTrack(item.track)) + '</strong></div></div></section>',
       item.id === 'xenium-3' ? '<div class="drawer-warning"><strong>Comparability review.</strong> GT source issues are flagged; this dataset is not silently merged with other groups.</div>' : '<div class="drawer-warning" style="border-color:var(--border);color:var(--text-2);background:var(--surface-alt);"><strong>Scope note.</strong> Comparisons are made only within the same comparability group.</div>'
     );
   }
