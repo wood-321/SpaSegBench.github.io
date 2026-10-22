@@ -444,3 +444,31 @@ body{font-size:15px}
 @media(max-width:1000px){.landing-hero{gap:22px;padding-inline:0;min-height:420px}.landing-copy h1{font-size:46px;letter-spacing:-1.7px}.landing-description{font-size:16px;line-height:1.75}.landing-logo{padding:17px}.landing-kicker{font-size:17px}.landing-art{min-width:0}}
 @media(max-width:650px){.landing-hero{grid-template-columns:1fr;gap:20px;padding:10px 4px 28px;margin-bottom:26px}.landing-copy h1{font-size:39px;letter-spacing:-1.4px;line-height:1.12}.landing-kicker{font-size:16px;margin-bottom:14px}.landing-description{font-size:16px;line-height:1.75;margin-bottom:22px}.project-link{min-width:134px;min-height:48px;font-size:15px;padding:10px 20px}.landing-art{width:86%;max-width:340px;justify-self:center}.landing-logo{padding:17px}.leaderboard-heading{display:flex;gap:12px;align-items:center}.leaderboard-heading h2{font-size:25px}.leaderboard-heading>span{font-size:12px;white-space:normal;text-align:right}.vertical-chart{--plot-height:140px;--axis-width:34px}.compass-page .axis-profile>div{font-size:13px}.compass-page .form-section-title h2{font-size:21px}}
 @media(prefers-reduced-motion:reduce){.project-link:not(:disabled):hover{transform:none}}
+
+/* Sixteen selected figures: one per method, with dataset captions. */
+.gallery-filters.method-filter{grid-template-columns:minmax(180px,240px)}
+.gallery-heading h1{margin:0;font-size:32px;letter-spacing:-.8px}
+.gallery-page .gallery-section{margin-top:0}
+.selected-figures{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;padding:24px}
+.selected-figures.single-figure{grid-template-columns:minmax(0,860px);justify-content:center}
+.selected-figures .image-card{background:#fff;transition:border-color .2s,box-shadow .2s}
+.selected-figures .image-card:has(.image-open:hover),.selected-figures .image-card:focus-within{border-color:#92b8d4;box-shadow:0 5px 20px #1764a510}
+.selected-figures .image-open{position:relative;background:#fff;border-bottom:1px solid var(--line);padding:16px}
+.selected-figures .image-open img{aspect-ratio:4/3;object-fit:contain;background:#fff}
+.selected-figures .image-caption{gap:6px;padding:18px 20px}
+.selected-figures .image-caption strong{font-size:19px;line-height:1.35;color:var(--ink)}
+.selected-figures .image-caption span{font-size:15px;line-height:1.5}
+.image-zoom{position:absolute;right:18px;bottom:18px;display:flex;align-items:center;gap:9px;border:1px solid #d8e5ee;border-radius:20px;background:#fffffff2;color:var(--blue);padding:8px 12px;font-size:13px;opacity:0;transform:translateY(4px);transition:opacity .2s,transform .2s;pointer-events:none}
+.image-zoom svg{width:16px;height:16px}
+.image-open:hover .image-zoom,.image-open:focus-visible .image-zoom{opacity:1;transform:none}
+.image-dialog{padding:22px 26px;width:min(1160px,calc(100% - 32px))}
+.figure-dialog-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:18px}
+.figure-dialog-heading h2{font-size:24px;margin:0 0 6px}
+.figure-dialog-heading p{margin:0;color:var(--secondary);font-size:15px}
+.figure-dialog-heading .close-button{position:static;flex-shrink:0}
+.image-dialog>img{display:block;width:100%;height:auto;max-height:calc(85dvh - 160px);object-fit:contain}
+.figure-dialog-footer{display:flex;justify-content:flex-end;margin-top:16px}
+.figure-dialog-footer a{display:inline-flex;align-items:center;gap:10px;min-height:44px;font-size:14px}
+.figure-dialog-footer svg{width:16px;height:16px}
+@media(max-width:650px){.gallery-heading h1{font-size:27px;margin-bottom:18px}.gallery-filters.method-filter{grid-template-columns:1fr}.selected-figures{grid-template-columns:1fr;gap:18px;padding:14px}.selected-figures .image-open{padding:10px}.selected-figures .image-caption{padding:16px}.selected-figures .image-caption strong{font-size:18px}.selected-figures .image-caption span{font-size:14px}.image-dialog{padding:18px 14px}.figure-dialog-heading{gap:12px}.figure-dialog-heading h2{font-size:21px}.figure-dialog-heading p{font-size:14px}}
+@media(prefers-reduced-motion:reduce){.selected-figures .image-card,.image-zoom{transition:none}.image-zoom{transform:none}}

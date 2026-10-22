@@ -1,1 +1,178 @@
-[]
+[
+  {
+    "id": "selected-cellotype",
+    "methodId": "cellotype",
+    "datasetId": "cosmx_lymph_node",
+    "platform": "CosMx",
+    "image": "assets/segmentations/cellotype-full.webp",
+    "thumbnail": "assets/segmentations/cellotype-thumb.webp",
+    "pdf": "assets/segmentations/cellotype.pdf",
+    "width": 1604,
+    "height": 1800
+  },
+  {
+    "id": "selected-cellpose",
+    "methodId": "cellpose",
+    "datasetId": "cosmx_lymph_node",
+    "platform": "CosMx",
+    "image": "assets/segmentations/cellpose-full.webp",
+    "thumbnail": "assets/segmentations/cellpose-thumb.webp",
+    "pdf": "assets/segmentations/cellpose.pdf",
+    "width": 1604,
+    "height": 1800
+  },
+  {
+    "id": "selected-cellpose3",
+    "methodId": "cellpose3",
+    "datasetId": "xenium_colon",
+    "platform": "Xenium",
+    "image": "assets/segmentations/cellpose3-full.webp",
+    "thumbnail": "assets/segmentations/cellpose3-thumb.webp",
+    "pdf": "assets/segmentations/cellpose3.pdf",
+    "width": 1604,
+    "height": 1800
+  },
+  {
+    "id": "selected-cellsam",
+    "methodId": "cellsam",
+    "datasetId": "xenium_lymph_node",
+    "platform": "Xenium",
+    "image": "assets/segmentations/cellsam-full.webp",
+    "thumbnail": "assets/segmentations/cellsam-thumb.webp",
+    "pdf": "assets/segmentations/cellsam.pdf",
+    "width": 1604,
+    "height": 1800
+  },
+  {
+    "id": "selected-mesmer",
+    "methodId": "mesmer",
+    "datasetId": "xenium_colon",
+    "platform": "Xenium",
+    "image": "assets/segmentations/mesmer-full.webp",
+    "thumbnail": "assets/segmentations/mesmer-thumb.webp",
+    "pdf": "assets/segmentations/mesmer.pdf",
+    "width": 1604,
+    "height": 1800
+  },
+  {
+    "id": "selected-stardist",
+    "methodId": "stardist",
+    "datasetId": "xenium_liver",
+    "platform": "Xenium",
+    "image": "assets/segmentations/stardist-full.webp",
+    "thumbnail": "assets/segmentations/stardist-thumb.webp",
+    "pdf": "assets/segmentations/stardist.pdf",
+    "width": 1604,
+    "height": 1800
+  },
+  {
+    "id": "selected-unseg",
+    "methodId": "unseg",
+    "datasetId": "xenium_kidney",
+    "platform": "Xenium",
+    "image": "assets/segmentations/unseg-full.webp",
+    "thumbnail": "assets/segmentations/unseg-thumb.webp",
+    "pdf": "assets/segmentations/unseg.pdf",
+    "width": 1604,
+    "height": 1800
+  },
+  {
+    "id": "selected-boms",
+    "methodId": "boms",
+    "datasetId": "merfish_lung_cancer",
+    "platform": "MERFISH",
+    "image": "assets/segmentations/boms-full.webp",
+    "thumbnail": "assets/segmentations/boms-thumb.webp",
+    "pdf": "assets/segmentations/boms.pdf",
+    "width": 1800,
+    "height": 1200
+  },
+  {
+    "id": "selected-baysor",
+    "methodId": "baysor",
+    "datasetId": "merfish_breast_cancer",
+    "platform": "MERFISH",
+    "image": "assets/segmentations/baysor-full.webp",
+    "thumbnail": "assets/segmentations/baysor-thumb.webp",
+    "pdf": "assets/segmentations/baysor.pdf",
+    "width": 1800,
+    "height": 1165
+  },
+  {
+    "id": "selected-bering",
+    "methodId": "bering",
+    "datasetId": "merfish_colon2",
+    "platform": "MERFISH",
+    "image": "assets/segmentations/bering-full.webp",
+    "thumbnail": "assets/segmentations/bering-thumb.webp",
+    "pdf": "assets/segmentations/bering.pdf",
+    "width": 1800,
+    "height": 1264
+  },
+  {
+    "id": "selected-cellist",
+    "methodId": "cellist",
+    "datasetId": "xenium_prostate",
+    "platform": "Xenium",
+    "image": "assets/segmentations/cellist-full.webp",
+    "thumbnail": "assets/segmentations/cellist-thumb.webp",
+    "pdf": "assets/segmentations/cellist.pdf",
+    "width": 1800,
+    "height": 1163
+  },
+  {
+    "id": "selected-comseg",
+    "methodId": "comseg",
+    "datasetId": "xenium_breast",
+    "platform": "Xenium",
+    "image": "assets/segmentations/comseg-full.webp",
+    "thumbnail": "assets/segmentations/comseg-thumb.webp",
+    "pdf": "assets/segmentations/comseg.pdf",
+    "width": 1800,
+    "height": 1007
+  },
+  {
+    "id": "selected-genesegnet",
+    "methodId": "genesegnet",
+    "datasetId": "xenium_mouse_brain",
+    "platform": "Xenium",
+    "image": "assets/segmentations/genesegnet-full.webp",
+    "thumbnail": "assets/segmentations/genesegnet-thumb.webp",
+    "pdf": "assets/segmentations/genesegnet.pdf",
+    "width": 1800,
+    "height": 1005
+  },
+  {
+    "id": "selected-proseg",
+    "methodId": "proseg",
+    "datasetId": "cosmx_pancreas",
+    "platform": "CosMx",
+    "image": "assets/segmentations/proseg-full.webp",
+    "thumbnail": "assets/segmentations/proseg-thumb.webp",
+    "pdf": "assets/segmentations/proseg.pdf",
+    "width": 1800,
+    "height": 1248
+  },
+  {
+    "id": "selected-ucs",
+    "methodId": "ucs",
+    "datasetId": "xenium_kidney",
+    "platform": "Xenium",
+    "image": "assets/segmentations/ucs-full.webp",
+    "thumbnail": "assets/segmentations/ucs-thumb.webp",
+    "pdf": "assets/segmentations/ucs.pdf",
+    "width": 1800,
+    "height": 1265
+  },
+  {
+    "id": "selected-dissect",
+    "methodId": "dissect",
+    "datasetId": "merfish_liver1",
+    "platform": "MERFISH",
+    "image": "assets/segmentations/dissect-full.webp",
+    "thumbnail": "assets/segmentations/dissect-thumb.webp",
+    "pdf": "assets/segmentations/dissect.pdf",
+    "width": 1800,
+    "height": 1161
+  }
+]

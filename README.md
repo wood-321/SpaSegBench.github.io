@@ -13,11 +13,13 @@ node scripts/verify.mjs
 
 Preview: http://127.0.0.1:4173. No frontend dependencies or build step are required. Python with openpyxl is needed only to regenerate the benchmark data.
 
+You can also open `index.html` directly from the `dist` folder. Keep the whole folder together: the gallery loads its bundled JavaScript manifest without fetching local JSON, so all 16 figures also work under `file://`.
+
 ## Views
 
 - The homepage introduction summarizes the supplied project README, with the original logo surrounded by decorative cell boundaries and transcript dots. Paper and GitHub buttons remain disabled placeholders until URLs are added to `projectLinks` in `app.js`.
 - `#/`: two-column leaderboard without method icons or search. Image methods default to PQ; transcript / multimodal methods default to detection F1. The upper-right metric, platform, dataset and prior selectors update the heading, zero-based bar chart, ranking and method detail dialog together. Error metrics sort ascending. Values are descriptive medians over the selected records; utility uses its existing mean and dataset coverage counts canonical datasets.
-- The gallery is directly below the leaderboard. Dataset and method filters cover 16 methods × 31 canonical datasets. Original, overlay and mask views, image enlargement, lazy loading and 12-set pagination support large collections. No scientific images are fabricated; the supplied manifest is currently empty.
+- The gallery is directly below the leaderboard and contains the 16 user-selected figures, one per method. A single method filter narrows the collection; every card identifies its canonical dataset. Click a figure to enlarge it and open its unmodified original PDF. Full-page previews preserve axes, legends and scale bars, with lazy-loaded thumbnails for browsing.
 - `#/recommend`: SpaSegCompass retains its whole-cell recommendation rules, source records and optional conditions. The enlarged rounded Leaderboard / Recommend switch keeps its sliding active background.
 - `#/visuals` and `#/explore` remain available for gallery and catalog access.
 
@@ -58,33 +60,33 @@ Reference server: two Intel Xeon Gold 6458Q processors (64 physical cores total)
 
 Inventory fields retain their scopes. Parent-sample cell counts do not become ROI densities; panel size is not transcript count; source pixels are not processed workload. Confirmed metadata informs platform/tissue/species/panel context; unresolved workload and staining features are disclosed.
 
-## Add images
+## Selected visualization figures
 
-Place assets in `dist/assets/segmentations/` and append records to `dist/assets/segmentation-results.json`:
+`scripts/import-gallery.py` imports the supplied `选图.zip` using Poppler, pypdf and Pillow. It checks the dataset token inside every PDF, maps it through the corrected dataset catalog, preserves the original PDF bytes, and generates lossless WebP previews (900 px thumbnails and 1800 px full figures). `reports/selected-gallery-import.json` records source filenames, hashes and dataset mappings.
+
+The public manifest is `dist/assets/segmentation-results.json`, with exactly one record per method. The importer also writes the matching `segmentation-results.js` used by the page for both local-file and HTTP access:
 
 ```json
 {
-  "id": "cellpose-xenium1-roi01",
+  "id": "selected-cellpose",
   "methodId": "cellpose",
-  "datasetId": "xenium_1",
-  "platform": "Xenium",
-  "sample": "ROI 01",
-  "alt": "CellposeSAM segmentation in Xenium ROI 01",
-  "images": {
-    "original": "assets/segmentations/roi01-original.png",
-    "overlay": "assets/segmentations/roi01-overlay.png",
-    "mask": "assets/segmentations/roi01-mask.png"
-  }
+  "datasetId": "cosmx_lymph_node",
+  "platform": "CosMx",
+  "image": "assets/segmentations/cellpose-full.webp",
+  "thumbnail": "assets/segmentations/cellpose-thumb.webp",
+  "pdf": "assets/segmentations/cellpose.pdf",
+  "width": 1604,
+  "height": 1800
 }
 ```
 
-IDs must be unique; method/dataset/platform must match the catalog. Dataset IDs may use a canonical name or any alias from `assets/dataset-catalog.json`; aliases are normalized when images load. At least one supported PNG/JPG/WebP/AVIF asset is required. Missing views are labeled explicitly. Only relative paths within assets are accepted. Keep coordinate extent and image dimensions consistent across a set.
+IDs and methods must be unique; method/dataset/platform must match the catalog. Width and height must match the full rendered image. Only safe relative image paths and local PDF paths under `assets/segmentations/` are accepted. The source figures show different datasets and regions and are labeled individually.
 
 ## Validation and release status
 
 `scripts/verify.mjs` checks source reconciliation, scoring, missingness, provenance gates, resource modes, constraints, representative recommendation scenarios, English markup, event handlers, escaping, gallery paths, mode routing, comparison values and retained optional inputs. It writes `reports/implementation-verification.json`.
 
-See `../reports/leaderboard-redesign-20261022.md` and the saved previews for this revision. All 26 verification checks and 60 recommendation scenarios pass. These changes are local; this revision has not been published or pushed to a hosted Site.
+See `../reports/leaderboard-redesign-20261022.md` and the saved previews for this revision. All 29 verification checks and 60 recommendation scenarios pass, including direct-file gallery loading without fetch. These changes are local; this revision has not been published or pushed to a hosted Site.
 
 ## Dataset reconciliation
 
