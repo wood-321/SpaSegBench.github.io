@@ -1,7 +1,7 @@
 /* The living-paper presentation layer. All quality/resource measurements come
  * from data.js. SpaSegCompass remains in app.js + engine.js, without new weights.
  */
-const paperState={platform:'',dataset:'',prior:'',resourceMetric:'runtimeSeconds',resourceMode:'all',tissue:'all',lineage:'myeloid',lineMethods:['proseg','ucs','cellpose','mesmer','cellist','boms']};
+const paperState={platform:'',dataset:'',prior:'',resourceMode:'all',resourceMethods:['cellpose','bering','comseg'],tissue:'all',lineage:'myeloid',lineMethods:['proseg','ucs','cellpose','mesmer','cellist','boms']};
 const paperColors={blue:'#448ab5',orange:'#ea873c',slate:'#7c8b9b',teal:'#418a98',lightBlue:'#7ba9cf'};
 const platformOrder=['Xenium','CosMx','MERFISH','Stereo-seq','STARmap'];
 const paperMetricGroups={
@@ -99,7 +99,6 @@ function renderDatasetLandscape(){
     return '<article class="chart-card dataset-chart dataset-'+tone+'"><div class="dataset-chart-heading"><h4>'+label+'</h4><span>LINEAR SCALE</span></div><p class="dataset-range"><strong>'+shortNumber(min)+'–'+shortNumber(max)+'</strong><span>per dataset</span></p>'+datasetBarSvg(rows,key)+'</article>';
   }).join('')+'</div><div class="dataset-reading-guide"><span class="bar-key"><i></i> Bar & label = platform mean</span><span class="point-key"><i></i> One point = one dataset</span></div><p class="dataset-scope">All bars start at zero. Counts include full samples and cropped regions; genes are reported counts, not nominal panel sizes. Each platform contains 1–13 datasets.</p></div>';
 }
-function paperTable(headers,rows){return '<div class="paper-data-table"><table><thead><tr>'+headers.map(h=>'<th scope="col">'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map((v,i)=>'<'+(i?'td':'th scope="row"')+'>'+esc(v)+'</'+(i?'td':'th')+'>').join('')+'</tr>').join('')+'</tbody></table></div>';}
 
 // Normalize ranks within the original reference/prior groups. First average
 // repeated records per method, then groups per dataset and datasets per platform.
@@ -146,17 +145,44 @@ function bubbleMatrix(track){
 function renderPaperLeaderboard(){
   return '<section id="leaderboard" class="paper-section" aria-labelledby="leaderboard-title">'+sectionIntro('02','LEADERBOARD','<span id="leaderboard-title">Performance is a profile.</span>','Compare strengths across complementary metrics, then explore the resources each method needs.')+'<div id="paper-board"><div class="paper-filter-bar"><div class="paper-filters">'+paperSelect('Platform','platform',[['','All platforms'],...platformOrder],paperState.platform)+paperSelect('Dataset','dataset',[['','All datasets'],...datasets.filter(d=>!paperState.platform||d.platform===paperState.platform).map(d=>[d.id,d.name])],paperState.dataset)+paperSelect('Segmentation prior','prior',[['','All states'],['yes','With prior'],['no','Without prior'],['unknown','Unconfirmed']],paperState.prior)+'</div></div><div class="chart-card matrix-card"><div class="matrix-key"><span><b>How to read</b> Larger, squarer markers = better rank.</span><div><span>0</span>'+[0,.25,.5,.75,1].map(v=>'<i style="--size:'+(8+18*Math.sqrt(v))+'px;--round:'+(50-34*v)+'%;--opacity:'+(.92-.7*v)+'"></i>').join('')+'<span>1</span><span class="missing-key">× No comparison</span></div></div>'+['molecule','image'].map(bubbleMatrix).join('')+'<div class="chart-explainer"><h4>Reading the ranks</h4><p>Scores run from 0 (worst) to 1 (best) within matched reference and prior groups, with ties averaged. Results are averaged first within datasets, then across platforms with equal platform weight. Error metrics are reversed; cell-count ratio is scored by distance from 1.</p><p>Image and transcript / multimodal tracks are separate comparisons. Coverage can differ; hover for the median measured value and sample support. A single-method group has no comparative rank.</p></div></div></div><div id="paper-resources">'+renderPaperResources()+'</div></section>';
 }
+const resourceAxes=[{key:'runtimeSeconds',label:'Runtime',unit:'min'},{key:'ramGiB',label:'CPU memory',unit:'GiB'},{key:'vramGiB',label:'GPU memory',unit:'GiB'}];
+function resourceValue(value,key){return value===null?'Not available':numberLabel(key==='runtimeSeconds'?value/60:value,2)+(key==='runtimeSeconds'?' min':' GiB');}
 function resourceSummary(){
-  return methods.map(m=>{const runs=benchmark.resources.filter(r=>r.methodId===m.id&&r.status==='success'&&(!paperState.platform||byDataset(r.datasetId)?.platform===paperState.platform)&&(!paperState.dataset||r.datasetId===paperState.dataset)&&(paperState.resourceMode==='all'||(paperState.resourceMode==='gpu'?r.gpuUsed:!r.gpuUsed)));return{...m,runs:runs.length,gpuRuns:runs.filter(r=>r.gpuUsed).length,value:paperQuantile(finiteValues(runs.map(r=>r[paperState.resourceMetric])),.5)};}).sort((a,b)=>(a.value??Infinity)-(b.value??Infinity));
+  return methods.map(m=>{
+    const runs=benchmark.resources.filter(r=>r.methodId===m.id&&r.status==='success'&&(!paperState.platform||byDataset(r.datasetId)?.platform===paperState.platform)&&(!paperState.dataset||r.datasetId===paperState.dataset)&&(paperState.resourceMode==='all'||(paperState.resourceMode==='gpu'?r.gpuUsed:!r.gpuUsed)));
+    return {...m,runs:runs.length,gpuRuns:runs.filter(r=>r.gpuUsed).length,values:Object.fromEntries(resourceAxes.map(a=>[a.key,paperQuantile(finiteValues(runs.map(r=>r[a.key])),.5)]))};
+  });
+}
+function resourceRadarData(){
+  const rows=resourceSummary(),maxima=Object.fromEntries(resourceAxes.map(a=>[a.key,Math.max(0,...rows.map(r=>r.values[a.key]??0))]));
+  return {rows,maxima,selected:rows.filter(r=>r.runs&&paperState.resourceMethods.includes(r.id)).map(r=>({...r,scores:resourceAxes.map(a=>r.values[a.key]===null?null:maxima[a.key]>0?r.values[a.key]/maxima[a.key]:0)}))};
+}
+function resourceRadarSvg(data){
+  const W=640,H=365,cx=320,cy=203,radius=139;
+  const point=(i,f)=>{const angle=(-90-i*120)*Math.PI/180;return [cx+Math.cos(angle)*radius*f,cy+Math.sin(angle)*radius*f];};
+  const coords=points=>points.map(p=>p.map(v=>v.toFixed(2)).join(',')).join(' ');
+  let svg='<svg class="data-svg resource-radar-svg" viewBox="0 0 '+W+' '+H+'" role="group" aria-label="Three-axis resource radar: runtime, CPU memory and GPU memory. Smaller values toward the center mean lower resource use.">';
+  for(const fraction of [.25,.5,.75,1])svg+='<polygon class="radar-grid" points="'+coords(resourceAxes.map((a,i)=>point(i,fraction)))+'" fill="'+(fraction===1?'#eef3f7':'none')+'" fill-opacity=".45"/>';
+  resourceAxes.forEach((a,i)=>{const [x,y]=point(i,1);svg+='<line class="radar-axis" x1="'+cx+'" y1="'+cy+'" x2="'+x+'" y2="'+y+'"/>';});
+  for(const fraction of [.25,.5,.75,1])svg+='<text class="radar-tick" x="'+(cx+10)+'" y="'+(cy-radius*fraction+4)+'">'+fraction*100+'%</text>';
+  const labels=[[cx,24],[150,312],[490,312]];
+  resourceAxes.forEach((a,i)=>{const [x,y]=labels[i];svg+='<text class="radar-axis-title" x="'+x+'" y="'+y+'" text-anchor="middle">'+a.label+'</text><text class="svg-small" x="'+x+'" y="'+(y+19)+'" text-anchor="middle">Max '+resourceValue(data.maxima[a.key],a.key)+'</text>';});
+  data.selected.forEach((m,index)=>{
+    const [color]=lineStyles[m.id],dash=['','7 4','2 4'][index%3];
+    const points=m.scores.map((v,i)=>v===null?null:point(i,v)),valid=points.filter(Boolean);
+    const details=resourceAxes.map(a=>[a.label,resourceValue(m.values[a.key],a.key)]).concat([['Successful runs',m.runs],['GPU-used runs',m.gpuRuns]]);
+    svg+='<g class="radar-series" '+tipAttrs(m.name,details,'Medians across the current dataset and execution-mode selection. Axes are scaled independently to the highest method median in this view. Zero GPU memory means no GPU memory was recorded; missing values are not zero.')+'>';
+    if(valid.length===3)svg+='<polygon class="radar-area" points="'+coords(points)+'" fill="'+color+'" fill-opacity=".1" stroke="'+color+'" stroke-width="2.5"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>';
+    else if(valid.length===2)svg+='<polyline points="'+coords(valid)+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-dasharray="3 4"/>';
+    valid.forEach(([x,y])=>svg+='<circle cx="'+x+'" cy="'+y+'" r="4" fill="white" stroke="'+color+'" stroke-width="2.2"/>');
+    svg+='</g>';
+  });
+  if(!data.selected.length)svg+='<text class="svg-label" x="'+cx+'" y="'+(H-12)+'" text-anchor="middle">Select a method with resource data.</text>';
+  return svg+'</svg>';
 }
 function renderPaperResources(){
-  const key=paperState.resourceMetric,label={runtimeSeconds:'End-to-end runtime',ramGiB:'Peak task RAM',vramGiB:'Peak memory per GPU'}[key],rows=resourceSummary(),max=Math.max(1,...rows.map(r=>r.value||0)),W=1080,H=350,L=65,R=20,T=44,B=94,ph=H-T-B,cw=(W-L-R)/rows.length;
-  const display=v=>v===null?'Not available':key==='runtimeSeconds'?duration(v):numberLabel(v,2)+' GiB';
-  let svg='<svg class="data-svg resource-svg" viewBox="0 0 '+W+' '+H+'" role="group" aria-label="Median '+label+' by method on a linear scale">';
-  for(let i=0;i<=4;i++){const v=max*i/4,yy=T+ph*(1-i/4);svg+='<line class="plot-grid" x1="'+L+'" x2="'+(W-R)+'" y1="'+yy+'" y2="'+yy+'"/><text class="svg-small" x="'+(L-10)+'" y="'+(yy+4)+'" text-anchor="end">'+(key==='runtimeSeconds'?numberLabel(v/60,1):numberLabel(v,1))+'</text>';}
-  svg+='<text class="svg-small" x="'+L+'" y="13">'+(key==='runtimeSeconds'?'minutes':'GiB')+'</text>';
-  rows.forEach((m,i)=>{const x=L+(i+.5)*cw,h=(m.value||0)/max*ph,y=T+ph-h,color=paperColors[key==='runtimeSeconds'?'teal':key==='ramGiB'?'orange':'blue'];svg+='<g class="resource-hit" '+tipAttrs(m.name,[[label,display(m.value)],['Successful runs',m.runs],['GPU-used runs',m.gpuRuns]],'Median of observed successful runs. Missing runs are not failures; zero GPU memory means CPU-only execution.')+'><rect x="'+(x-cw/2)+'" y="'+T+'" width="'+cw+'" height="'+ph+'" fill="transparent"/>'+(m.value===null?'<text x="'+x+'" y="'+(T+ph-5)+'" text-anchor="middle" class="svg-small">—</text>':'<rect class="resource-bar" x="'+(x-15)+'" y="'+(m.value===0?T+ph-2:y)+'" width="30" height="'+Math.max(2,h)+'" rx="4" fill="'+color+'"/>')+'<text class="svg-small" x="'+x+'" y="'+(y-10)+'" text-anchor="middle">'+(m.value===null?'':key==='runtimeSeconds'?numberLabel(m.value/60,1):numberLabel(m.value,1))+'</text></g><text class="svg-small" transform="translate('+(x+3)+' '+(T+ph+20)+') rotate(-43)" text-anchor="end">'+esc(m.name)+'</text>';});
-  return '<div class="overview-subheading resource-heading-paper"><div><p class="paper-kicker">THE COST OF A CELL BOUNDARY · FIGURE 6</p><h3>Accuracy meets practical constraints.</h3></div></div><div class="chart-card"><div class="chart-card-heading resource-controls"><div><h4>'+label+'</h4><p>Median over observed successful runs · '+(paperState.dataset?esc(byDataset(paperState.dataset).name):paperState.platform||'All datasets')+'</p></div><div class="paper-filters">'+paperSelect('Resource','resourceMetric',[['runtimeSeconds','Runtime'],['ramGiB','CPU RAM'],['vramGiB','GPU memory']],key)+paperSelect('Execution mode','resourceMode',[['all','All runs'],['gpu','GPU used'],['cpu','CPU only']],paperState.resourceMode)+'</div></div><div class="plot-scroll">'+svg+'</svg></div><p class="chart-note">'+rows.reduce((n,r)=>n+r.runs,0)+' successful resource records in this view. Platform and dataset filters above apply; quality-track and prior filters do not. Historical runs are not a forecast for your sample.</p><div class="resource-context"><div class="hardware-facts"><span><strong>64 cores</strong>Physical CPU</span><span><strong>~1 TiB</strong>System RAM</span><span><strong>8 × RTX 4090 D</strong>24,564 MiB per GPU</span></div><p>Runtime includes preprocessing, prior generation, training, segmentation and postprocessing where executed. Memory is reported per GPU. The resource snapshot contains 451 records; the manuscript reports 445 completed tasks from a different snapshot.</p></div></div>';
+  const data=resourceRadarData(),runs=data.rows.reduce((n,r)=>n+r.runs,0),scope=paperState.dataset?byDataset(paperState.dataset).name:paperState.platform||'All datasets';
+  return '<div class="resource-comparison"><aside class="resource-story"><p class="paper-kicker">THE COST OF A CELL BOUNDARY · FIGURE 6</p><h3>Accuracy meets<br>practical constraints.</h3><p>Compare the time, CPU memory and GPU memory required to draw a cell boundary.</p><div class="resource-reading"><strong>Closer to the center, lower cost.</strong><p>Each axis starts at zero and is scaled to the highest method median in this view. Hover, focus or tap a profile to see its measured values.</p></div><p class="resource-coverage"><strong>'+runs+'</strong> successful runs · '+data.rows.filter(r=>r.runs).length+' methods</p>'+paperSelect('Execution mode','resourceMode',[['all','All runs'],['gpu','GPU used'],['cpu','CPU only']],paperState.resourceMode)+'<div class="resource-hardware"><h4>Benchmark hardware</h4><p>64 physical CPU cores · ~1 TiB RAM<br>8 × RTX 4090 D · 24,564 MiB per GPU</p></div><p class="resource-footnote">Runtime includes executed preprocessing, training, segmentation and postprocessing. Memory is task RAM and peak memory per GPU. The resource snapshot contains 451 records; the manuscript reports 445 completed tasks from a different snapshot.</p></aside><div class="chart-card resource-radar-card"><div class="chart-card-heading"><div><h4>Resource profiles</h4><p>'+esc(scope)+' · Median over successful runs</p></div><span>'+data.selected.length+' selected</span></div>'+resourceRadarSvg(data)+'<div class="resource-methods" role="group" aria-label="Methods in resource radar">'+data.rows.map(m=>{const selected=data.selected.findIndex(r=>r.id===m.id),style=selected<0?'solid':['solid','dashed','dotted'][selected%3];return '<button id="resource-method-'+m.id+'" data-paper-action="resource-method" data-value="'+m.id+'" aria-pressed="'+(selected>=0)+'"'+(!m.runs?' disabled title="No successful runs in this selection"':'')+'><i style="--series-color:'+lineStyles[m.id][0]+';border-top-style:'+style+'"></i>'+esc(m.name)+(!m.runs?' <span>n/a</span>':'')+'</button>';}).join('')+'</div><div class="resource-actions"><span>Select methods to compare</span><button data-paper-action="resource-reset">Reset selection</button></div><p class="resource-chart-note">100% = the highest method median on that axis, not the hardware limit. Axes stay fixed when toggling methods. Missing measurements are omitted.</p></div></div>';
 }
 
 const galleryTissues=[['all','All tissues'],['merfish-colon','Colon · MERFISH'],['merfish-liver','Liver · MERFISH'],['xenium-breast-cancer','Breast cancer · Xenium'],['xenium-ccRCC','Kidney · Xenium'],['xenium-lymph','Lymph node · Xenium']];
@@ -201,19 +227,41 @@ function renderDownstream(){
     '<div class="chart-card downstream-chart"><div class="chart-card-heading"><div><h4>Boundary-associated contamination</h4><p>'+available.length+' methods with data · '+selected.length+' selected</p></div><div class="pill-controls" role="group" aria-label="Cell lineage">'+data.lineages.map(([v,l])=>'<button id="lineage-'+v+'" data-paper-action="lineage" data-value="'+v+'" aria-pressed="'+(paperState.lineage===v)+'">'+l+'</button>').join('')+'</div></div><div class="plot-scroll">'+downstreamSvg()+'</div>'+
     '<div class="line-legend" role="group" aria-label="Methods in contamination plot">'+data.series.map(s=>{const exists=!!s.cases[paperState.lineage];return '<button id="line-'+s.methodId+'" data-paper-action="line-method" data-value="'+s.methodId+'" aria-pressed="'+(exists&&paperState.lineMethods.includes(s.methodId))+'"'+(!exists?' disabled title="No record for this lineage"':'')+'><i style="--series-color:'+lineStyles[s.methodId][0]+';border-top-style:'+(lineStyles[s.methodId][1]?'dashed':'solid')+'"></i>'+esc(byMethod(s.methodId).name)+(!exists?' <span>n/a</span>':'')+'</button>';}).join('')+'</div><div class="line-actions"><button data-paper-action="line-all">Show all available</button><button data-paper-action="line-reset">Reset selection</button></div>'+
     (missing.length?'<p class="missing-data-note">No Epi / Tumor record for '+esc(missing.join(' or '))+'.</p>':'')+
-    '<div class="endpoint-readout"><div class="readout-heading"><h4>Boundary reference values</h4><span>Cumulative foreign transcripts per cell · selected methods</span></div>'+paperTable(['Method','Cells (n)','Through 0 µm','Through +3 µm','Foreign / own at 0 µm'],selected.map(s=>{const row=s.cases[paperState.lineage],foreign=row.foreign[data.boundaryIndex],own=row.own[data.boundaryIndex];return [byMethod(s.methodId).name,numberLabel(row.nCell),numberLabel(foreign,3),numberLabel(row.foreign[data.plus3Index],3),own>0?numberLabel(foreign/own,3):'Not available'];}))+'<p>Reference values use the bins ending at 0 and +3 µm; curves use the recorded bin midpoints. Cells (n) is the evaluated count for each method and lineage. Displayed values are rounded to three decimals.</p></div></div></div></section>';
+    '</div></div></section>';
 }
 function renderPaperRecommendation(){return '<section id="recommendation" class="paper-section recommendation-section" aria-labelledby="recommendation-title">'+sectionIntro('05','RECOMMENDATION','<span id="recommendation-title">Find a method for your next experiment.</span>','SpaSegCompass connects your inputs, analysis goals and available resources with the benchmark evidence.')+renderRecommend()+'</section>';}
 function renderPaperPage(){return '<div class="paper-page">'+renderOverview()+renderPaperLeaderboard()+renderPaperGallery()+renderDownstream()+renderPaperRecommendation()+'</div>';}
 
-let paperObserver=null,tooltipPinned=false;
-function setupPaperNavigation(){
-  if(typeof IntersectionObserver==='undefined')return;
-  paperObserver?.disconnect();
-  const update=()=>{const sections=[...document.querySelectorAll('.paper-page > section')];const id=[...sections].reverse().find(s=>s.getBoundingClientRect().top<180)?.id||'overview';document.querySelectorAll('.paper-nav a').forEach(a=>{if(a.hash==='#'+id)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current');});};
-  paperObserver=new IntersectionObserver(update,{rootMargin:'-100px 0px -60% 0px',threshold:0});
-  document.querySelectorAll('.paper-page > section').forEach(s=>paperObserver.observe(s));update();
+let tooltipPinned=false,paperNavigationBound=false,paperNavigationPending=false;
+function paperActiveSection(sections,activationTop,scrollY,viewportHeight,pageHeight){
+  if(!sections.length)return null;
+  if(scrollY>0&&pageHeight>0&&scrollY+viewportHeight>=pageHeight-3&&sections.at(-1).top<viewportHeight)return sections.at(-1).id;
+  return [...sections].reverse().find(s=>s.top<=activationTop)?.id||sections[0].id;
 }
+function updatePaperNavigation(){
+  const sections=[...document.querySelectorAll('.paper-page > section')].map(s=>({id:s.id,top:s.getBoundingClientRect().top}));
+  if(!sections.length)return;
+  const headerBottom=document.querySelector('.site-header')?.getBoundingClientRect?.().bottom||80;
+  const height=window.innerHeight||0,activationTop=headerBottom+Math.max(24,Math.min(80,height*.1));
+  const id=paperActiveSection(sections,activationTop,window.scrollY,height,document.documentElement?.scrollHeight||0);
+  document.querySelectorAll('.paper-nav a').forEach(a=>{if(a.hash==='#'+id)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current');});
+}
+function schedulePaperNavigation(){
+  if(paperNavigationPending)return;
+  if(typeof window.requestAnimationFrame!=='function'){updatePaperNavigation();return;}
+  paperNavigationPending=true;window.requestAnimationFrame(()=>{paperNavigationPending=false;updatePaperNavigation();});
+}
+function setupPaperNavigation(){
+  if(!paperNavigationBound){
+    window.addEventListener('scroll',schedulePaperNavigation,{passive:true});
+    window.addEventListener('resize',schedulePaperNavigation);
+    window.addEventListener('hashchange',schedulePaperNavigation);
+    window.addEventListener('load',schedulePaperNavigation);
+    paperNavigationBound=true;
+  }
+  updatePaperNavigation();
+}
+
 function scrollToPaperHash(){const aliases={'#/':'overview','#/recommend':'recommendation','#/visuals':'gallery','#/explore':'dataset-landscape','#research-form':'research-form'};const id=aliases[location.hash]||location.hash.slice(1);document.getElementById(id)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}
 function refreshPaperPart(id,html,focusId){const el=document.getElementById(id);if(!el)return;hidePaperTip();el.outerHTML=html;if(focusId)document.getElementById(focusId)?.focus({preventScroll:true});setupPaperNavigation();}
 function hidePaperTip(){const tip=document.getElementById('chart-tooltip');if(tip){tip.hidden=true;tip.innerHTML='';}tooltipPinned=false;document.querySelectorAll('.tip-active').forEach(n=>n.classList.remove('tip-active'));}
@@ -235,6 +283,11 @@ document.addEventListener('click',e=>{
   const b=e.target.closest?.('[data-paper-action]');if(!b)return;const action=b.dataset.paperAction,value=b.dataset.value,id=b.id;
   if(action==='tissue'){paperState.tissue=value;refreshPaperPart('gallery',renderPaperGallery(),id);}
   else if(action==='gallery-next'||action==='gallery-prev'){const el=document.getElementById('gallery-track');el.scrollBy({left:(action==='gallery-next'?1:-1)*el.clientWidth*.8,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});}
+  else if(action==='resource-method'||action==='resource-reset'){
+    paperState.resourceMethods=action==='resource-reset'?['cellpose','bering','comseg']:paperState.resourceMethods.includes(value)?paperState.resourceMethods.filter(x=>x!==value):[...paperState.resourceMethods,value];
+    hidePaperTip();document.getElementById('paper-resources').innerHTML=renderPaperResources();
+    if(id)document.getElementById(id)?.focus({preventScroll:true});
+  }
   else if(action==='lineage'||action==='line-method'||action==='line-all'||action==='line-reset'){
     if(action==='lineage')paperState.lineage=value;
     if(action==='line-method')paperState.lineMethods=paperState.lineMethods.includes(value)?paperState.lineMethods.filter(x=>x!==value):[...paperState.lineMethods,value];
