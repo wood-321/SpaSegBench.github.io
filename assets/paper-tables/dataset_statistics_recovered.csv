@@ -1,0 +1,32 @@
+no,dataset,platform,technology,species,tissue,resolution,n_cells,n_genes,n_transcripts
+1,xenium_breast,Xenium,Xenium (500-plex),Human,Breast Cancer,≤1 cell,209467,541,64581006
+2,xenium_colon,Xenium,Xenium (500-plex),Human,Colon,≤1 cell,219797,541,82549008
+3,xenium_liver,Xenium,Xenium (500-plex),Human,Liver,≤1 cell,239271,541,25424111
+4,xenium_mouse_brain,Xenium,Xenium Prime 5K,Mouse,Brain,≤1 cell,63173,13780,188540362
+5,xenium_pancreas_cancer,Xenium,Xenium (500-plex),Human,Pancreatic Cancer,≤1 cell,190965,538,28455659
+6,xenium_roi_crop,Xenium,Xenium Prime 5K,Human,Lymph Node,≤1 cell,2442,4509,838883
+7,xenium7,Xenium,Xenium Prime 5K,Human,Prostate Cancer,≤1 cell,193000,10017,59727355
+8,xenium_8,Xenium,Xenium (500-plex),Human,Kidney Cancer,≤1 cell,465534,543,77056936
+9,xenium9,Xenium,Xenium Prime 5K,Human,Skin Melanoma,≤1 cell,112551,10017,74011892
+10,xenium10,Xenium,Xenium Prime 5K,Human,Multimodal Tissue,≤1 cell,405927,5001,349884289
+11,cosmx_human_brain,CosMx,CosMx 6K,Human,Brain,≤1 cell,188686,6622,163339286
+12,cosmx_lymph_node,CosMx,CosMx 6K,Human,Lymph Node,≤1 cell,1852946,6175,1413412378
+13,Pancreas-CosMx-WTx-FlatFiles,CosMx,CosMx WTx,Human,Pancreas (WTx),≤1 cell,48944,18946,65794237
+14,merfish_liver1,MERFISH,MERFISH (500-plex),Human,Liver (Cancer),≤1 cell,568355,500,272021991
+15,merfish_liver2,MERFISH,MERFISH (500-plex),Human,Liver,≤1 cell,598141,500,283068068
+16,MERFISH_Lung_cancer,MERFISH,MERFISH (500-plex),Human,Lung Cancer,≤1 cell,353762,500,144388044
+17,merfish_mouse_brain,MERFISH,MERFISH (500-plex),Mouse,Brain,≤1 cell,78329,483,54712414
+18,merfish_colon1,MERFISH,MERFISH (500-plex),Human,Colon 1,≤1 cell,677451,500,411716053
+19,merfish_colon2,MERFISH,MERFISH (500-plex),Human,Colon 2,≤1 cell,817588,500,507576479
+20,merfish_Melanoma,MERFISH,MERFISH (500-plex),Human,Melanoma,≤1 cell,468138,500,160181929
+21,merfish_ovarian1,MERFISH,MERFISH (500-plex),Human,Ovarian 1,≤1 cell,358485,500,197365319
+22,merfish_ovarian2,MERFISH,MERFISH (500-plex),Human,Ovarian 2,≤1 cell,254347,500,115559393
+23,merfish_prostate1,MERFISH,MERFISH (500-plex),Human,Prostate 1,≤1 cell,721668,500,291996280
+24,merfish_prostate2,MERFISH,MERFISH (500-plex),Human,Prostate 2,≤1 cell,993825,500,221331615
+25,merfish_Uterian,MERFISH,MERFISH (500-plex),Human,Uterine,≤1 cell,843285,500,374580211
+26,merfish_breast_cancer,MERFISH,MERFISH (500-plex),Human,Breast Cancer,≤1 cell,713121,500,490398542
+27,stereo_mouse_embryo,Stereo-seq,Stereo-seq (WT),Mouse,Embryo,0.5 µm/bin,1191859,29082,1092062636
+28,E14.5_E1S3,Stereo-seq,Stereo-seq (WT),Mouse,Midbrain (E14.5E1S3),0.5 µm/bin,4872,18698,3362914
+29,E16.5_E1S3,Stereo-seq,Stereo-seq (WT),Mouse,Midbrain (E16.5E1S3),0.5 µm/bin,6892,21202,8031385
+30,E16.5_E2S7,Stereo-seq,Stereo-seq (WT),Mouse,Midbrain (E16.5E2S7),0.5 µm/bin,7960,21370,7602540
+31,starmap_BY1,STARmap,STARmap 1K,Mouse,Brain,≤1 cell,1424,1019,471295

@@ -3,33 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f8fb">
+  <meta name="theme-color" content="#f6f7f9">
   <meta name="description" content="Compare spatial cell segmentation methods with SpaSegBench. Use SpaSegCompass to find whole-cell segmentation candidates for your data, analysis goals and available resources.">
   <title>SpaSegBench | Spatial cell segmentation</title>
   <link rel="icon" type="image/png" href="assets/spasegbench-logo.png">
   <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="stylesheet" href="paper.css?v=5">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
   <header class="site-header">
     <div class="nav-shell">
-      <a class="brand" href="#/" aria-label="SpaSegBench home"><img class="brand-logo" src="assets/spasegbench-logo.png" alt="" width="432" height="313"><span>SpaSegBench</span></a>
-      <nav class="mode-switch" aria-label="Website mode">
-        <a href="#/" data-mode="leaderboard" aria-label="Leaderboard"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 15V9m6 6V4m6 11V7"/></svg><span class="mode-long">Leaderboard</span><span class="mode-short" aria-hidden="true">Board</span></a>
-        <a href="#/recommend" data-mode="recommend" aria-label="Recommend"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 2.2 5.8L18 10l-5.8 2.2L10 18l-2.2-5.8L2 10l5.8-2.2Z"/></svg><span class="mode-long">Recommend</span><span class="mode-short" aria-hidden="true">Guide</span></a>
+      <a class="brand" href="#overview" aria-label="SpaSegBench overview"><img class="brand-logo" src="assets/spasegbench-logo.png" alt="" width="432" height="313"><span>SpaSegBench</span></a>
+      <nav class="paper-nav" aria-label="Page sections">
+        <a href="#overview" aria-current="location">Overview</a>
+        <a href="#leaderboard">Leaderboard</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#downstream">Downstream</a>
+        <a href="#recommendation">Recommendation</a>
       </nav>
-      <button class="about-link" data-action="about" aria-label="About SpaSegBench">About</button>
+      <div class="header-links"><a href="https://github.com/Hussar1025/SpaSeg" target="_blank" rel="noopener noreferrer" class="header-github"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4 1-4-2-6-2m12 5v-3.5c0-1 .1-1.5-.5-2 3.3-.4 6.5-1.6 6.5-7A5.4 5.4 0 0 0 19.5 6c.2-1.2.1-2.5-.5-3.5 0 0-1.3-.4-4.2 1.5a15 15 0 0 0-7.6 0C4.3 2.1 3 2.5 3 2.5A6.3 6.3 0 0 0 2.5 6 5.4 5.4 0 0 0 1 9.5c0 5.4 3.2 6.6 6.5 7-.6.5-.6 1.5-.5 2V22"/></svg>GitHub</a><a href="assets/paper/SpaSegBench.pdf" target="_blank" rel="noopener noreferrer" class="header-paper">Paper <span aria-hidden="true">↗</span></a></div>
     </div>
   </header>
   <main id="main-content" tabindex="-1"></main>
-  <footer class="site-footer"><div class="footer-shell"><span>SpaSegBench</span><button data-action="about">About the benchmark</button></div></footer>
+  <footer class="site-footer"><div class="footer-shell"><a href="#overview">SpaSegBench <span>· From segmentation to insight.</span></a><button data-action="about">About the benchmark</button><a href="assets/paper/SpaSegBench.pdf" target="_blank" rel="noopener noreferrer">Read the paper ↗</a></div></footer>
+  <div id="chart-tooltip" class="chart-tooltip" role="tooltip" hidden></div>
   <dialog id="detail-dialog" class="detail-dialog" aria-labelledby="detail-title"></dialog>
-  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title"><button class="close-button" data-action="close-dialog" aria-label="Close">×</button><img src="assets/spasegbench-logo.png" alt="SpaSegBench" class="about-logo" width="432" height="313"><h2 id="about-title">About SpaSegBench</h2><p>Quality measurements come from Supplementary Tables S2 and S3. SpaSegCompass also uses the supplied resource summary and dataset inventory to suggest whole-cell segmentation candidates.</p><div id="about-facts" class="about-facts"></div><h3>Reading the evidence</h3><ul class="about-notes"><li>Rankings are exploratory. Image and transcript / multimodal tracks are evaluated separately; dataset labels are not confirmed independent specimens.</li><li>Only metrics measured for every method in the same track are shown. Dataset coverage can differ, so a leading rank is not proof of general superiority.</li><li>Detection F1 is reported for inspection and receives no separate weight. Prior and reference status are assessed per metric; reference-concordant measurements are excluded from accuracy utility.</li><li>Flagged or quarantined values remain traceable in source records and are excluded from aggregation as defined by their status.</li><li>mDA averages TP / (TP + FP + FN) across IoU thresholds. It is not AP50 or confidence-ranked average precision.</li><li>Efficiency has no weight in the quality score. Runtime, task RAM and per-card VRAM screen historical runs; they do not predict new workloads.</li></ul><p class="field-note">Method versions, ROI-level quality–resource links and independent validation remain incomplete. Missing-evidence bounds are not confidence intervals. English source-note translations are provided for reading; original records remain available to download.</p></dialog>
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title"><button class="close-button" data-action="close-dialog" aria-label="Close">×</button><img src="assets/spasegbench-logo.png" alt="SpaSegBench" class="about-logo" width="432" height="313"><h2 id="about-title">About SpaSegBench</h2><p>Quality measurements come from Supplementary Tables S2 and S3. SpaSegCompass also uses the supplied resource summary and dataset inventory to suggest whole-cell segmentation candidates.</p><div id="about-facts" class="about-facts"></div><h3>Reading the evidence</h3><ul class="about-notes"><li>Rankings are exploratory. Image and transcript / multimodal tracks are evaluated separately; dataset labels are not confirmed independent specimens.</li><li>Only metrics measured for every method in the same track are shown. Dataset coverage can differ, so a leading rank is not proof of general superiority.</li><li>Detection F1 is reported for inspection and receives no separate weight. Prior and reference status are assessed per metric; reference-concordant measurements are excluded from accuracy utility.</li><li>Flagged or quarantined values remain traceable in source records and are excluded from aggregation as defined by their status.</li><li>mDA averages TP / (TP + FP + FN) across IoU thresholds. It is not AP50 or confidence-ranked average precision.</li><li>Efficiency has no weight in the quality score. Runtime, task RAM and per-card VRAM screen historical runs; they do not predict new workloads.</li></ul><p class="field-note">Method versions, ROI-level quality–resource links and independent validation remain incomplete. Missing-evidence bounds are not confidence intervals. </p></dialog>
   <dialog id="image-dialog" class="image-dialog" aria-labelledby="figure-title"></dialog>
   <script src="data.js?v=18"></script>
   <script src="engine.js?v=18"></script>
   <script src="assets/source-notes-en.js?v=14"></script>
-  <script src="assets/segmentation-results.js?v=20"></script>
-  <script src="app.js?v=20"></script>
+  <script src="assets/segmentation-results.js?v=21"></script>
+  <script src="assets/paper-measurements.js?v=2"></script>
+  <script src="assets/paper-data.js?v=2"></script>
+  <script src="paper.js?v=6"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>

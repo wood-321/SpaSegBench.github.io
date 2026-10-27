@@ -13,21 +13,55 @@ node scripts/verify.mjs
 
 Preview: http://127.0.0.1:4173. No frontend dependencies or build step are required. Python with openpyxl is needed only to regenerate the benchmark data.
 
-You can also open `index.html` directly from the `dist` folder. Keep the whole folder together: the gallery loads its bundled JavaScript manifest without fetching local JSON, so all 16 figures also work under `file://`.
+You can also open `index.html` directly from the `dist` folder. Keep the whole folder together: the gallery loads its bundled JavaScript manifest without fetching local JSON, so all 77 figures also work under `file://`.
 
-## Views
+## Living-paper layout · 2026-10-27
 
-- The homepage introduction summarizes the supplied project README, with the original logo surrounded by decorative cell boundaries and transcript dots. Paper and GitHub buttons remain disabled placeholders until URLs are added to `projectLinks` in `app.js`.
-- `#/`: two-column leaderboard without method icons or search. Image methods default to PQ; transcript / multimodal methods default to detection F1. The upper-right metric, platform, dataset and prior selectors update the heading, zero-based bar chart, ranking and method detail dialog together. Error metrics sort ascending. Values are descriptive medians over the selected records; utility uses its existing mean and dataset coverage counts canonical datasets.
-- The gallery is directly below the leaderboard and contains the 16 user-selected figures, one per method. A single method filter narrows the collection; every card identifies its canonical dataset. Click a figure to enlarge it and open its unmodified original PDF. Full-page previews preserve axes, legends and scale bars, with lazy-loaded thumbnails for browsing.
-- `#/recommend`: SpaSegCompass retains its whole-cell recommendation rules, source records and optional conditions. The enlarged rounded Leaderboard / Recommend switch keeps its sliding active background.
-- `#/visuals` and `#/explore` remain available for gallery and catalog access.
+One continuous page: Overview, Leaderboard, Gallery, Downstream and Recommendation.
+The header retains the GitHub and manuscript links, with blue, orange and gray styling.
 
-Native dialogs support keyboard dismissal; visible focus and reduced-motion styles are retained. The leaderboard stacks into one column on small screens. No external frontend dependency or build step is required.
+- **Overview:** manuscript counts and illustrated input / evaluation diagrams. Figure 1c
+  displays three side-by-side charts for Cells, Genes and Transcripts. Each platform bar
+  is the arithmetic mean on a linear scale starting at zero; every supplied dataset is
+  a separate interactive point (31 points per chart). The mean is labeled above its bar.
+- **Leaderboard:** Figure 2-style bubble matrices retain both evidence tracks and
+  platform / dataset / prior filters. Hover, focus or tap reveals measured values.
+- **Resources:** vertical runtime, RAM and GPU-memory bars retain CPU/GPU filters and
+  labels positioned above their respective bars. Folded source tables have been removed.
+- **Gallery:** all 77 figures from the five supplied tissue archives, with tissue tabs,
+  method filtering, horizontal scrolling, keyboard arrows and full-image viewing.
+  Missing combinations are identified. There are no image or original-PDF downloads.
+- **Downstream:** measured Figure 4f line profiles from `cum_points_data.csv`, with
+  Myeloid, T-cell and Epi/Tumor selection, 150 samples per profile, method controls and
+  tooltips. Its visible boundary reference table is retained; the CSV link is removed.
+- **Recommendation:** the evidence engine and optional configuration inputs are
+  unchanged. Source viewers, folded result tables and export actions are removed.
+  Preparation notes and interpretation remain visible. The two expandable input
+  groups are settings, not data viewers.
+
+Chart points support keyboard focus and tap as well as hover. Gallery images load
+lazily, retain their complete framing and have descriptive labels. Reduced motion
+is supported. No frontend build step is required.
+
+### Data scopes and replacement points
+
+- `paper.js` / `paper.css`: page, interactive charts, gallery layout and styling.
+- `assets/paper-data.js`: manuscript counts and method families; references the
+  measurements imported into `assets/paper-measurements.js`.
+- `scripts/import-paper-data.py`: imports the complete dataset statistics and corrected
+  downstream curves. Source IDs remain separate from the older recommendation catalog.
+- `scripts/import-gallery-atlas.py`: imports the five tissue archives and writes
+  `assets/gallery/*.webp` plus synchronized `segmentation-results.json` / `.js` manifests.
+- `data.js` / `engine.js`: quality and resource snapshot, recommendation calculations.
+- `assets/paper/`: supplied manuscript and figures. Only the manuscript is linked in UI.
+
+Validate with `node scripts/verify.mjs` and `node scripts/verify-paper.mjs`.
+This is a local revision. Browser observation was blocked by the browser security
+policy; asset review and standalone SVG rendering do not constitute browser QA.
 
 ## Data snapshot
 
-2026-10-19: 403 source quality records, 399 primary records, 16 methods, 31 canonical datasets (merged from 47 quality-table labels), 451 successful resource measurements and 31 inventory entries. Two exact duplicates and two tuning variants remain inspectable but do not receive primary weight. Dataset labels are not independent biological specimens.
+2026-10-19: 403 source quality records, 399 primary records, 16 methods, 31 canonical datasets (merged from 47 quality-table labels), 451 successful resource measurements and 31 inventory entries. Two exact duplicates and two tuning variants remain in the source snapshot but do not receive primary weight. Dataset labels are not independent biological specimens.
 
 The user confirmed Cellpose = CellposeSAM and Cellpose3 = Cellpose3-cyto3 for the corresponding resource measurements. Stable internal IDs remain `cellpose` and `cellpose3`.
 
@@ -42,7 +76,7 @@ The importer reads the original files without modifying them, then runs `scripts
 
 Image axes: detection Fβ, Dice overlap, boundary F1 and instance quality (SQ/AJI/mDA). Transcript axes: detection Fβ, count agreement, expression profile and localization error including p95. Detection-focused profiles use β = 2.
 
-The public website uses only metrics with a measured value for every method within its evidence track. In the current snapshot this keeps 19 image metrics and 17 transcript / multimodal metrics; overall correct assignment, assignment rate and coverage fraction are excluded. Ranking filters further require availability for every method represented in the selected scope. Recommendation weights retain the scheme_ver2 proportions among shared axes: the unsupported assignment axis is removed and the remaining profile weights sum to one. Source downloads retain original values for provenance. Redundant measures do not receive extra weight: F1 and DQ are not separate axes, IoU is not counted again alongside Dice, and PQ is available as a diagnostic and optional floor. Zero and negative correlations are valid values.
+The public website uses only metrics with a measured value for every method within its evidence track. In the current snapshot this keeps 19 image metrics and 17 transcript / multimodal metrics; overall correct assignment, assignment rate and coverage fraction are excluded. Ranking filters further require availability for every method represented in the selected scope. Recommendation weights retain the scheme_ver2 proportions among shared axes: the unsupported assignment axis is removed and the remaining profile weights sum to one. The internal source snapshot retains original values for provenance; download links are not displayed. Redundant measures do not receive extra weight: F1 and DQ are not separate axes, IoU is not counted again alongside Dice, and PQ is available as a diagnostic and optional floor. Zero and negative correlations are valid values.
 
 Within-group rank utilities are descriptive. Groups separate track, canonical dataset, reference population, source reference where available, QV, variant and prior state. The recommender uses a shared method/group block, context weights and conservative axis-wise Pareto comparisons. It prefers an alternative with a complementary measured profile, subject to observed resource constraints.
 
@@ -60,33 +94,35 @@ Reference server: two Intel Xeon Gold 6458Q processors (64 physical cores total)
 
 Inventory fields retain their scopes. Parent-sample cell counts do not become ROI densities; panel size is not transcript count; source pixels are not processed workload. Confirmed metadata informs platform/tissue/species/panel context; unresolved workload and staining features are disclosed.
 
-## Selected visualization figures
+## Tissue visualization atlas
 
-`scripts/import-gallery.py` imports the supplied `选图.zip` using Poppler, pypdf and Pillow. It checks the dataset token inside every PDF, maps it through the corrected dataset catalog, preserves the original PDF bytes, and generates lossless WebP previews (900 px thumbnails and 1800 px full figures). `reports/selected-gallery-import.json` records source filenames, hashes and dataset mappings.
+Run `python scripts/import-gallery-atlas.py` from the project root using Python with
+Pillow and pypdf, plus Poppler's `pdftoppm`. It imports all 77 PDFs from these archives
+in `paper and figs`: MERFISH colon (15), MERFISH liver (16), Xenium breast cancer (16),
+Xenium ccRCC (14), and Xenium lymph node (16).
 
-The public manifest is `dist/assets/segmentation-results.json`, with exactly one record per method. The importer also writes the matching `segmentation-results.js` used by the page for both local-file and HTTP access:
+Each full preview is rendered at a 2,000-pixel longest edge, with a 720-pixel thumbnail.
+Both are lossless WebP. PDFs remain unchanged in their original archives. The import
+report at `reports/gallery-atlas-import.json` records each archive member and SHA-256.
+The PDF pages contain no extractable dataset titles: labels come from the supplied
+archive names. No identity is inferred for a specific MERFISH sample or ROI.
 
-```json
-{
-  "id": "selected-cellpose",
-  "methodId": "cellpose",
-  "datasetId": "cosmx_lymph_node",
-  "platform": "CosMx",
-  "image": "assets/segmentations/cellpose-full.webp",
-  "thumbnail": "assets/segmentations/cellpose-thumb.webp",
-  "pdf": "assets/segmentations/cellpose.pdf",
-  "width": 1604,
-  "height": 1800
-}
-```
-
-IDs and methods must be unique; method/dataset/platform must match the catalog. Width and height must match the full rendered image. Only safe relative image paths and local PDF paths under `assets/segmentations/` are accepted. The source figures show different datasets and regions and are labeled individually.
+The synchronized manifests contain unique figure IDs, method IDs, `galleryGroup`,
+`platform`, `tissue`, `datasetLabel`, local image/thumbnail paths and image dimensions.
+They contain no public PDF/download path. Multiple figures per method are supported.
+The `.js` manifest enables direct `file://` viewing without fetching JSON.
 
 ## Validation and release status
 
+The paper update imports `paper and figs/dataset_statistics_recovered.csv` and the corrected `paper and figs/cum_points_data.csv` using `scripts/import-paper-data.py`. Regenerate `assets/paper-measurements.js` and the internal `assets/paper-tables/*.csv` copies with the bundled Python runtime. The original CSVs remain unchanged; workstation paths are omitted from the bundled dataset copy. The new dataset statistics are used only for Figure 1c; their source IDs and metadata are independent of the older recommendation catalog.
+
+Figure 1c displays Cells, Genes and Transcripts simultaneously. Figure 4f plots 46 measured foreign-transcript profiles for Myeloid, T cells and Epi/Tumor, with 150 samples per curve at the supplied bin midpoints (−9.95 to +3.3 µm). The importer selects `mode=boundary`, `x_unit=um`; normalized relative-distance rows remain in the source copy but are not mixed into this axis. It preserves all foreign and own cumulative values and checks cumulative counts against cell counts and bin increments. The 0 µm reference uses the flagged bin ending at 0 (midpoint −0.05); the +3 µm reference uses the bin ending at +3, not the final +3.3 midpoint. CelloType and DISSECT have no Epi/Tumor row. The earlier summary file and synthetic demo curves are no longer used. See `../reports/paper-update-20261026.md` for the current revision.
+
+The Overview uses a centered SpaSegBench title, manuscript subtitle and introduction. Three illustrated input → method → output lanes explain the method families; four schematic panels explain the evaluation dimensions. The illustrations are conceptual, not measured data or microscopy images. Their SVG sources are bundled under `assets/overview/` and can be regenerated with `node scripts/build-overview-art.mjs` from the project root. Method names are static labels. Hero action buttons, original-figure links, the dataset-download button and the leaderboard method-track selector have been removed; the leaderboard always shows all available methods.
+
 `scripts/verify.mjs` checks source reconciliation, scoring, missingness, provenance gates, resource modes, constraints, representative recommendation scenarios, English markup, event handlers, escaping, gallery paths, mode routing, comparison values and retained optional inputs. It writes `reports/implementation-verification.json`.
 
-See `../reports/leaderboard-redesign-20261022.md` and the saved previews for this revision. All 29 verification checks and 60 recommendation scenarios pass, including direct-file gallery loading without fetch. These changes are local; this revision has not been published or pushed to a hosted Site.
+See `../reports/gallery-update-20261027.md` for this revision. All 29 verification checks and 60 recommendation scenarios pass, including direct-file gallery loading without fetch. These changes are local; this revision has not been published or pushed to a hosted Site.
 
 ## Dataset reconciliation
 
@@ -100,4 +136,4 @@ See `reports/materials-needed.md` for remaining evidence gaps. The present appli
 
 ## English presentation
 
-All site copy, controls and evidence notes are displayed in English. `assets/source-notes-en.js` provides reading translations for the 2026-10-19 snapshot, without modifying the source data. Numeric statements in notes retain the source values, including inconsistencies; metric statuses remain authoritative. Text accidentally occupying numeric source cells is identified as source text and explained in the translated note. Each annotated record offers an original JSON download for provenance. Regenerated source snapshots require translation review.
+All site copy, controls and evidence notes are displayed in English. `assets/source-notes-en.js` provides reading translations for the 2026-10-19 snapshot, without modifying the source data. Numeric statements in notes retain the source values, including inconsistencies; metric statuses remain authoritative. Text accidentally occupying numeric source cells is identified as source text and explained in the translated note. Original records remain in the local source snapshot; the UI has no original-record downloads. Regenerated source snapshots require translation review.
