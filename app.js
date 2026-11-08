@@ -27,7 +27,7 @@ function hero(view){
   const titles={leaderboard:['Cell segmentation leaderboard','Compare methods. Understand the evidence.'],visuals:['Segmentation gallery','Inspect original images, segmentation overlays and masks.'],explore:['Methods & datasets','Explore the methods and trace their measured evidence.']};
   return '<section class="page-heading"><div><p class="eyebrow">Spatial cell segmentation benchmark</p><h1>'+titles[view][0]+'</h1><p class="subtitle">'+titles[view][1]+'</p><p class="snapshot-line"><span>'+methods.length+' methods</span><span>'+datasets.length+' dataset labels</span><span>Updated 19 Oct 2026</span></p></div><div class="hero-logo-frame"><img src="assets/spasegbench-logo.png" alt="SpaSegBench" width="432" height="313"></div></section>';
 }
-const projectLinks={paper:'assets/paper/SpaSegBench.pdf',github:'https://github.com/Hussar1025/SpaSeg'};
+const projectLinks={paper:'',github:'https://github.com/Hussar1025/SpaSeg'};
 const metricAvailability=new Map();
 function sharedMetricKeys(track){return benchmarkEngine.sharedMetrics[track]||[];}
 function availableMetricKeys(track,filters={}){
@@ -43,7 +43,7 @@ function metricOptions(){
   const available=availableMetricKeys(state.track,{platform:state.platform,dataset:state.dataset,prior:state.prior});
   return order.filter(k=>available.includes(k)).map(k=>[k,metricLabels[k]]);
 }
-function projectLink(kind,label){const url=projectLinks[kind];return /^(https:\/\/|assets\/paper\/)/.test(url)?'<a class="project-link '+kind+'" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+label+glyph('arrow')+'</a>':'<button class="project-link '+kind+'" type="button" disabled title="Link coming soon" aria-label="'+label+' — link coming soon">'+label+glyph('arrow')+'</button>';}
+function projectLink(kind,label){const url=projectLinks[kind];return /^https:\/\//.test(url)?'<a class="project-link '+kind+'" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+label+glyph('arrow')+'</a>':'<button class="project-link '+kind+'" type="button" disabled title="Link coming soon" aria-label="'+label+' — link coming soon">'+label+'</button>';}
 function landingHero(){
   return '<section class="landing-hero" aria-labelledby="landing-title"><div class="landing-copy"><p class="landing-kicker">SpaSegBench</p><h1 id="landing-title">Benchmarking<br><span>cell segmentation.</span></h1><p class="landing-description">A unified comparison of 16 segmentation methods across 31 spatial transcriptomics datasets. Explore accuracy, robustness and computational cost, and use SpaSegCompass to find methods suited to your data and analysis.</p><div class="project-links">'+projectLink('paper','Paper')+projectLink('github','GitHub')+'</div></div><div class="landing-art"><img class="segmentation-motif" src="assets/segmentation-motif.svg" alt="" aria-hidden="true" width="520" height="440"><div class="landing-logo"><img src="assets/spasegbench-logo.png" alt="SpaSegBench" width="432" height="313"></div><span class="art-orbit orbit-one" aria-hidden="true"></span><span class="art-orbit orbit-two" aria-hidden="true"></span></div></section>';
 }
@@ -80,7 +80,7 @@ function rankingTable(rows){
 }
 function chart(rows){
   const key=state.metric,values=rows.map(m=>m[key]).filter(Number.isFinite),min=Math.min(0,...values),max=Math.max(0,...values)||(!values.some(v=>v<0)?1:0),span=max-min||1,zero=(0-min)/span*100;
-  return '<section id="comparison-chart" class="ranking-chart" aria-labelledby="chart-title"><div class="chart-heading"><h3 id="chart-title">'+esc(selectedMetricLabel())+' ranking</h3><span>'+metricInterpretation(key)+'</span></div><div class="vertical-chart" style="--bar-count:'+Math.max(rows.length,1)+'"><div class="chart-grid" aria-hidden="true">'+[...new Set([max,min+span/2,min,0])].map(v=>'<div class="chart-tick'+(v===0?' zero-tick':'')+'" style="bottom:'+(v-min)/span*100+'%"><span>'+(v===0?'0.0':numeric(v))+'</span></div>').join('')+'</div><div class="chart-columns">'+rows.map((m,i)=>'<button class="chart-column'+(i===0&&m[key]!=null?' leading':'')+'" data-action="method" data-id="'+m.id+'" aria-label="'+esc(m.name+', '+selectedMetricLabel()+': '+formatMetric(m))+'"><span class="column-value">'+formatMetric(m)+'</span><span class="column-plot" aria-hidden="true">'+(Number.isFinite(m[key])?'<i class="column-bar" style="bottom:'+Math.min(zero,(m[key]-min)/span*100)+'%;height:'+Math.abs(m[key])/span*100+'%"></i>':'<span class="column-missing">—</span>')+'</span><span class="column-name">'+esc(m.name)+'</span></button>').join('')+'</div></div></section>';
+  return '<section id="comparison-chart" class="ranking-chart" aria-labelledby="chart-title"><div class="chart-heading"><h3 id="chart-title">'+esc(selectedMetricLabel())+'</h3><span>'+metricInterpretation(key)+'</span></div><div class="vertical-chart" style="--bar-count:'+Math.max(rows.length,1)+'"><div class="chart-grid" aria-hidden="true">'+[...new Set([max,min+span/2,min,0])].map(v=>'<div class="chart-tick'+(v===0?' zero-tick':'')+'" style="bottom:'+(v-min)/span*100+'%"><span>'+(v===0?'0.0':numeric(v))+'</span></div>').join('')+'</div><div class="chart-columns">'+rows.map((m,i)=>'<button class="chart-column'+(i===0&&m[key]!=null?' leading':'')+'" data-action="method" data-id="'+m.id+'" aria-label="'+esc(m.name+', '+selectedMetricLabel()+': '+formatMetric(m))+'"><span class="column-value">'+formatMetric(m)+'</span><span class="column-plot" aria-hidden="true">'+(Number.isFinite(m[key])?'<i class="column-bar" style="bottom:'+Math.min(zero,(m[key]-min)/span*100)+'%;height:'+Math.abs(m[key])/span*100+'%"></i>':'<span class="column-missing">—</span>')+'</span><span class="column-name">'+esc(m.name)+'</span></button>').join('')+'</div></div></section>';
 }
 function renderLeaderboard(){
   const options=metricOptions();if(!options.some(([key])=>key===state.metric)){state.metric=options[0]?.[0]||'';state.direction=lowerIsBetter(state.metric)?'asc':'desc';}const rows=rankRows(),label=selectedMetricLabel();
@@ -119,7 +119,7 @@ function conditionCount(kind){
 }
 function renderRecommend(){
   const r=state.rec;
-  return '<div class="page compass-page"><section class="page-heading compass-hero"><div><h2>SpaSegCompass</h2><span class="target-label">Whole-cell segmentation</span></div><div class="hero-logo-frame"><img src="assets/spasegbench-logo.png" alt="SpaSegBench" width="432" height="313"></div></section>'+
+  return '<div class="page compass-page">'+
   '<form id="research-form" class="compass-form" novalidate><div class="compass-workspace"><section class="form-section data-section">'+sectionTitle('01','Describe your data','Choose the inputs you can provide.')+'<div class="rec-grid">'+
   recField('track','Evidence track',[['molecule','Transcript / multimodal'],['image','Image segmentation']])+
   recField('platform','Data platform',['Xenium','MERFISH','CosMx','Stereo-seq','STARmap','Visium HD',['Other','Another / new platform']])+
@@ -198,6 +198,7 @@ document.addEventListener('click',e=>{
   if(a==='close-dialog'){el.closest('dialog').close();return;}
   if(a==='method'||a==='dataset'){openDetail(a,id);return;}
   if(a==='sort')state.direction=state.direction==='desc'?'asc':'desc';
+  else if(a==='profile-metric'){if(!metricOptions().some(([key])=>key===id))return;state.metric=id;state.direction=lowerIsBetter(id)?'asc':'desc';}
   else if(a==='track'){state.track=id;state.metric=id==='image'?'pq':'f1';state.direction='desc';state.dataset='';state.platform='';state.query='';state.evidence='';state.prior='';}
   else if(a==='reset-filters')Object.assign(state,{query:'',platform:'',dataset:'',prior:'',evidence:''});
   else if(a==='library-tab')state.libraryTab=id;

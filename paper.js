@@ -1,71 +1,46 @@
 /* The living-paper presentation layer. All quality/resource measurements come
  * from data.js. SpaSegCompass remains in app.js + engine.js, without new weights.
  */
-const paperState={platform:'',dataset:'',prior:'',resourceMode:'all',resourceMethods:['cellpose','bering','comseg'],tissue:'all',lineage:'myeloid',lineMethods:['proseg','ucs','cellpose','mesmer','cellist','boms']};
+const paperState={overviewTab:'metrics',tissue:'all',lineage:'myeloid',lineMethods:['proseg','ucs','cellpose','mesmer','cellist','boms']};
 const paperColors={blue:'#448ab5',orange:'#ea873c',slate:'#7c8b9b',teal:'#418a98',lightBlue:'#7ba9cf'};
 const platformOrder=['Xenium','CosMx','MERFISH','Stereo-seq','STARmap'];
-const paperMetricGroups={
-  molecule:[
-    {label:'Detection accuracy',color:'teal',keys:[['cell_ratio','Ratio'],['precision','Prec.'],['recall','Recall'],['f1','F1']]},
-    {label:'Spatial localization',color:'orange',keys:[['loc_mean_um','Mean'],['loc_median_um','Median'],['loc_p95_um','P95']]},
-    {label:'Count fidelity',color:'blue',keys:[['count_pearson','Pearson'],['count_spearman','Spearman'],['count_mae','MAE'],['count_rmse','RMSE']]},
-    {label:'Expression / assignment',color:'slate',keys:[['vec_cosine','Cosine'],['vec_js_dist','JS dist.'],['vec_pearson','Pearson'],['assign_accuracy','Assign.']]}
-  ],
-  image:[
-    {label:'Boundary quality',color:'teal',keys:[['boundary_f1','B. F1'],['boundary_precision','B. Prec.'],['boundary_recall','B. Recall'],['sq','SQ']]},
-    {label:'Region overlap',color:'orange',keys:[['dice','Dice'],['iou','IoU'],['pixel_accuracy','Pix. acc.'],['aji','AJI']]},
-    {label:'Instance detection',color:'blue',keys:[['image_f1','F1'],['image_precision','Prec.'],['image_recall','Recall'],['dq','DQ']]},
-    {label:'Overall quality',color:'slate',keys:[['pq','PQ'],['mda','mDA'],['oversegmentation','Over'],['undersegmentation','Under']]}
-  ]
-};
-const paperRankCache=new Map();
 const numberLabel=(n,digits=0)=>Number.isFinite(n)?n.toLocaleString('en-US',{maximumFractionDigits:digits}):'Not available';
 const shortNumber=n=>n>=1e9?+(n/1e9).toFixed(1)+'B':n>=1e6?+(n/1e6).toFixed(1)+'M':n>=1000?+(n/1000).toFixed(1)+'k':String(+n.toFixed(1));
 const paperMean=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:null;
 const finiteValues=a=>a.filter(Number.isFinite);
-function paperQuantile(values,p){const a=[...values].sort((x,y)=>x-y);if(!a.length)return null;const i=(a.length-1)*p,l=Math.floor(i);return a[l]+(a[Math.ceil(i)]-a[l])*(i-l);}
 function paperTip(title,rows,note=''){return esc(JSON.stringify({title,rows,note}));}
 function tipAttrs(title,rows,note=''){return 'tabindex="0" role="button" aria-label="'+esc(title+'. '+rows.map(r=>r.join(': ')).join('. '))+'" data-tip="'+paperTip(title,rows,note)+'"';}
-function sectionIntro(n,kicker,title,description,extra=''){return '<div class="paper-section-heading"><div><p class="paper-kicker"><span>'+n+'</span> '+kicker+'</p><h2>'+title+'</h2><p>'+description+'</p></div>'+extra+'</div>';}
-function paperSelect(label,key,options,value){return '<label class="paper-select"><span>'+label+'</span><select id="paper-'+key+'" data-paper-select="'+key+'">'+optionList(options,value)+'</select></label>';}
+function sectionIntro(id,title){return '<div class="paper-section-heading"><h2 id="'+id+'-title">'+title+'</h2></div>';}
 
 function renderOverview(){
   return '<section id="overview" class="paper-section overview-section" aria-labelledby="overview-title">'+
-    '<div class="paper-hero"><p class="paper-kicker"><span class="live-dot"></span> AN INTERACTIVE RESEARCH BENCHMARK</p>'+
-    '<h1 id="overview-title">SpaSeg<span>Bench</span></h1>'+
-    '<p class="hero-subtitle">Benchmarking cell segmentation for<br class="hero-title-break"> subcellular spatial transcriptomics</p>'+
-    '<p class="hero-summary">A systematic benchmark connecting <strong>segmentation quality</strong>, computational cost and <strong>biological insight</strong>. Explore how methods and data shape the cells—and the biology—you see.</p>'+
-    '</div>'+
-    '<div class="study-stats">'+[[31,'Datasets','Across diverse tissues'],[16,'Methods','Three input families'],[445,'Completed runs','Of 466 applicable tasks'],[5,'Platforms','Seven technologies']].map(([n,label,note],i)=>'<div class="study-stat stat-'+i+'"><strong>'+n+'</strong><div><span>'+label+'</span><small>'+note+'</small></div></div>').join('')+'</div>'+renderFramework()+renderDatasetLandscape()+'</section>';
+    '<div class="overview-intro"><div class="paper-hero"><h1 id="overview-title">SpaSeg<span>Bench</span></h1>'+
+    '<p class="hero-subtitle">Benchmarking cell segmentation for subcellular spatial transcriptomics</p>'+
+    '<div class="hero-actions"><a class="paper-primary" href="#gallery">Explore gallery '+glyph('arrow')+'</a><a class="paper-secondary" href="#recommendation">Find a method '+glyph('arrow')+'</a></div></div>'+
+    '<div class="study-stats">'+[[31,'Datasets'],[16,'Methods'],[445,'Completed runs'],[5,'Platforms']].map(([n,label],i)=>'<div class="study-stat stat-'+i+'"><strong>'+n+'</strong><span>'+label+'</span></div>').join('')+'</div></div>'+
+    '<div class="overview-explorer"><div class="overview-tabs" role="tablist" aria-label="Benchmark overview">'+['metrics','datasets'].map(id=>'<button type="button" id="overview-tab-'+id+'" role="tab" aria-selected="'+(paperState.overviewTab===id)+'" aria-controls="overview-panel-'+id+'" tabindex="'+(paperState.overviewTab===id?'0':'-1')+'" data-paper-action="overview-tab" data-value="'+id+'">'+(id==='metrics'?'Metrics':'Datasets')+'</button>').join('')+'</div>'+
+    '<div id="overview-panel-metrics" class="overview-panel" role="tabpanel" aria-labelledby="overview-tab-metrics" tabindex="0"'+(paperState.overviewTab==='metrics'?'':' hidden')+'>'+renderFramework()+'</div>'+
+    '<div id="overview-panel-datasets" class="overview-panel" role="tabpanel" aria-labelledby="overview-tab-datasets" tabindex="0"'+(paperState.overviewTab==='datasets'?'':' hidden')+'>'+renderDatasetLandscape()+'</div></div></section>';
+}
+function setOverviewTab(value,focus=false){
+  if(!['metrics','datasets'].includes(value))return;
+  paperState.overviewTab=value;hidePaperTip();
+  document.querySelectorAll('[data-paper-action="overview-tab"]').forEach(button=>{const active=button.dataset.value===value;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;});
+  ['metrics','datasets'].forEach(id=>{const panel=document.getElementById('overview-panel-'+id);if(panel)panel.hidden=id!==value;});
+  if(focus)document.getElementById('overview-tab-'+value)?.focus({preventScroll:true});
+  schedulePaperNavigation();
 }
 function overviewArt(name,alt,width=240,height=154){
   return '<img class="overview-diagram" src="assets/overview/'+name+'.svg" alt="'+esc(alt)+'" width="'+width+'" height="'+height+'" loading="lazy" decoding="async">';
 }
 function renderFramework(){
-  const scenes={
-    image:['Nuclear & membrane stains','Cell masks','Nuclear and membrane stains provide image features for cell segmentation.','Four colored cell masks delineate individual cells.'],
-    transcript:['Spatial transcript coordinates','Transcript-to-cell assignments','Colored transcript points with spatial coordinates, before cell assignment.','Transcript points are grouped within four cell boundaries.'],
-    multimodal:['Registered images + transcripts','Masks + cell-by-gene matrices','Nuclear stains and transcript coordinates are registered in the same field.','Segmented cells are paired with a cell-by-gene expression matrix.']
-  };
-  const arrow='<span class="workflow-arrow" aria-hidden="true">'+glyph('arrow')+'</span>';
-  const lanes=paperData.families.map((f,i)=>{
-    const scene=scenes[f.id];
-    return '<article class="workflow-lane family-'+f.color+'" aria-labelledby="family-'+f.id+'">'+
-      '<figure class="workflow-input">'+overviewArt(f.id+'-input',scene[2])+'<figcaption><span class="mobile-stage">Input</span>'+scene[0]+'</figcaption></figure>'+
-      '<div class="workflow-arrow-in">'+arrow+'</div><div class="workflow-family"><div class="workflow-family-heading"><h4 id="family-'+f.id+'">'+f.label+'</h4><span>'+f.methods.length+' methods</span></div><p>'+f.description+'</p><div class="method-chips">'+f.methods.map(id=>'<span>'+esc(byMethod(id).name)+'</span>').join('')+'</div></div>'+
-      '<div class="workflow-arrow-out">'+arrow+'</div><figure class="workflow-output">'+overviewArt(f.id+'-output',scene[3])+'<figcaption><span class="mobile-stage">Output</span>'+scene[1]+'</figcaption></figure></article>';
-  }).join('');
   const evaluations=[
-    ['accuracy','Accuracy','How well does it match?','Overlap, boundary agreement and detection; transcript assignment and expression fidelity.','Reference and predicted cell outlines overlap, with a visible difference at the boundary.'],
-    ['robustness','Robustness','Does it generalize?','Consistent evaluation across platforms, tissues and species.','Xenium, CosMx, MERFISH, Stereo-seq and STARmap connect to a shared evaluation.'],
-    ['challenges','Challenging inputs','Where does it struggle?','Whole-slide scale, small gene panels and densely packed cells.','Three challenges: a tiled tissue section, a sparse gene panel and densely packed cells.'],
-    ['efficiency','Efficiency & impact','What is the practical cost?','Runtime, RAM and GPU memory; downstream transcript contamination.','Schematic resource bars beside neighboring cells illustrate computational cost and transcript contamination.']
+    ['accuracy','Accuracy','Boundary, detection and transcript-assignment quality.','Reference and predicted cell outlines overlap, with a visible difference at the boundary.'],
+    ['robustness','Robustness','Consistency across platforms, tissues and species.','Xenium, CosMx, MERFISH, Stereo-seq and STARmap connect to a shared evaluation.'],
+    ['challenges','Challenging inputs','Large samples, small gene panels and dense cells.','A tiled tissue section, a sparse gene panel and densely packed cells.'],
+    ['efficiency','Efficiency & impact','Runtime, memory and downstream contamination.','Resource bars and neighboring cells illustrate computational cost and transcript contamination.']
   ];
-  return '<div class="overview-subheading"><div><p class="paper-kicker">THE BENCHMARK AT A GLANCE</p><h3>Different inputs. A shared evaluation.</h3></div></div>'+
-    '<div class="workflow-board"><div class="workflow-columns" aria-hidden="true"><span>01 / INPUT</span><span>02 / METHOD FAMILY</span><span>03 / OUTPUT</span></div>'+lanes+
-    '<div class="workflow-convergence"><span></span><p>'+glyph('arrow')+' One standardized evaluation pipeline</p><span></span></div></div>'+
-    '<div class="evaluation-panel"><div class="evaluation-heading"><div><p class="paper-kicker">WHAT WE MEASURE</p><h3>Beyond a single score.</h3></div><p>Accuracy, context and practical cost all matter.</p></div>'+
-    '<div class="evaluation-grid">'+evaluations.map(([id,title,question,description,alt],i)=>'<article class="evaluation-card"><div class="evaluation-card-title"><span>0'+(i+1)+'</span><h4>'+title+'</h4></div>'+overviewArt(id,alt,260,178)+'<h5>'+question+'</h5><p>'+description+'</p></article>').join('')+'</div><p class="schematic-note">Conceptual illustrations of the benchmark design · Figure 1a–b</p></div>';
+  return '<div class="evaluation-grid">'+evaluations.map(([id,title,description,alt])=>'<article class="evaluation-card"><h3>'+title+'</h3>'+overviewArt(id,alt,260,178)+'<p>'+description+'</p></article>').join('')+'</div>';
 }
 function datasetStats(){return paperData.datasetStatistics;}
 function datasetBarSvg(rows,key){
@@ -94,95 +69,36 @@ function datasetBarSvg(rows,key){
 }
 function renderDatasetLandscape(){
   const rows=datasetStats(),metrics=[['cells','Cells','blue'],['genes','Genes','orange'],['transcripts','Transcripts','slate']];
-  return '<div id="dataset-landscape" class="dataset-landscape"><div class="overview-subheading"><div><p class="paper-kicker">DATASET LANDSCAPE · FIGURE 1C</p><h3>Explore the scale behind the benchmark.</h3><p>31 datasets, three dimensions. Hover, focus or tap a point for its details.</p></div></div><div class="dataset-triptych">'+metrics.map(([key,label,tone])=>{
+  return '<div id="dataset-landscape" class="dataset-landscape"><div class="dataset-triptych">'+metrics.map(([key,label,tone])=>{
     const values=rows.map(r=>r[key]),min=Math.min(...values),max=Math.max(...values);
-    return '<article class="chart-card dataset-chart dataset-'+tone+'"><div class="dataset-chart-heading"><h4>'+label+'</h4><span>LINEAR SCALE</span></div><p class="dataset-range"><strong>'+shortNumber(min)+'–'+shortNumber(max)+'</strong><span>per dataset</span></p>'+datasetBarSvg(rows,key)+'</article>';
-  }).join('')+'</div><div class="dataset-reading-guide"><span class="bar-key"><i></i> Bar & label = platform mean</span><span class="point-key"><i></i> One point = one dataset</span></div><p class="dataset-scope">All bars start at zero. Counts include full samples and cropped regions; genes are reported counts, not nominal panel sizes. Each platform contains 1–13 datasets.</p></div>';
+    return '<article class="chart-card dataset-chart dataset-'+tone+'"><div class="dataset-chart-heading"><h4>'+label+'</h4></div><p class="dataset-range"><strong>'+shortNumber(min)+'–'+shortNumber(max)+'</strong><span>per dataset</span></p>'+datasetBarSvg(rows,key)+'</article>';
+  }).join('')+'</div><div class="dataset-reading-guide"><span class="bar-key"><i></i> Bar & label = platform mean</span><span class="point-key"><i></i> One point = one dataset</span></div><p class="dataset-scope">Counts include full samples and cropped regions; genes are reported counts, not nominal panel sizes.</p></div>';
 }
 
-// Normalize ranks within the original reference/prior groups. First average
-// repeated records per method, then groups per dataset and datasets per platform.
-// Platforms have equal weight. Never rank a one-method group as a win.
-function bubbleData(track,filters={}){
-  const cacheKey=JSON.stringify([track,filters]);if(paperRankCache.has(cacheKey))return paperRankCache.get(cacheKey);
-  const groups=paperMetricGroups[track].map(g=>({...g,keys:g.keys.filter(([k])=>sharedMetricKeys(track).includes(k))}));
-  const keys=groups.flatMap(g=>g.keys.map(([k])=>k)),rows=benchmarkEngine.select({...filters,track}),byGroup=new Map();
-  rows.forEach(r=>{if(!byGroup.has(r.group))byGroup.set(r.group,[]);byGroup.get(r.group).push(r);});
-  const methodRows=methods.filter(m=>m.track===track&&rows.some(r=>r.methodId===m.id)).map(m=>({...m,metrics:{}}));
-  for(const key of keys){
-    const ranked=[];
-    for(const group of byGroup.values()){
-      const candidates=methodRows.map(m=>{const v=finiteValues(group.filter(r=>r.methodId===m.id).map(r=>benchmarkEngine.reportValue(r.metrics[key])));return{id:m.id,value:paperQuantile(v,.5)};}).filter(r=>r.value!==null);
-      if(candidates.length<2)continue;
-      const oriented=candidates.map(r=>key==='cell_ratio'?-Math.abs(r.value-1):lowerIsBetter(key)?-r.value:r.value);
-      candidates.forEach((c,i)=>{const better=oriented.filter(v=>v>oriented[i]).length,ties=oriented.filter(v=>v===oriented[i]).length,rank=better+(ties+1)/2;ranked.push({id:c.id,dataset:group[0].datasetId,platform:group[0].platform,score:1-(rank-1)/(candidates.length-1)});});
-    }
-    for(const method of methodRows){
-      const observations=rows.filter(r=>r.methodId===method.id),values=finiteValues(observations.map(r=>benchmarkEngine.reportValue(r.metrics[key]))),scores=ranked.filter(r=>r.id===method.id),ds=[...new Set(scores.map(r=>r.dataset))].map(id=>({platform:scores.find(r=>r.dataset===id).platform,value:paperMean(scores.filter(r=>r.dataset===id).map(r=>r.score))}));
-      const platformMeans=[...new Set(ds.map(r=>r.platform))].map(p=>paperMean(ds.filter(r=>r.platform===p).map(r=>r.value)));
-      method.metrics[key]={raw:paperQuantile(values,.5),score:paperMean(platformMeans),records:values.length,datasets:ds.length,platforms:platformMeans.length};
-    }
-  }
-  methodRows.forEach(m=>m.meanRank=paperMean(Object.values(m.metrics).map(x=>x.score).filter(Number.isFinite)));
-  methodRows.sort((a,b)=>(b.meanRank??-1)-(a.meanRank??-1)||a.name.localeCompare(b.name));
-  const result={groups,methods:methodRows};paperRankCache.set(cacheKey,result);return result;
+function leaderboardProfileKeys(options){
+  const defaults=state.track==='image'?['pq','dice','boundary_f1','image_recall']:['f1','assign_accuracy','count_pearson','loc_p95_um'];
+  return [...new Set([state.metric,...defaults,...options.map(([key])=>key)])].filter(key=>options.some(([id])=>id===key)).slice(0,4);
 }
-function bubbleMatrix(track){
-  const data=bubbleData(track,{platform:paperState.platform,dataset:paperState.dataset,prior:paperState.prior}),cols=data.groups.flatMap(g=>g.keys.map(([key,label])=>({key,label,color:paperColors[g.color]})));
-  const W=1080,L=160,R=20,rowH=44,T=76,H=T+data.methods.length*rowH+16,cw=(W-L-R)/cols.length;
-  let svg='<svg class="data-svg bubble-svg" viewBox="0 0 '+W+' '+H+'" role="group" aria-label="'+(track==='image'?'Image-based':'Transcript and multimodal')+' metric rank matrix">',offset=0;
-  data.groups.forEach(g=>{const x=L+offset*cw;svg+='<rect x="'+(x+3)+'" y="4" width="'+(g.keys.length*cw-6)+'" height="28" rx="5" fill="'+paperColors[g.color]+'" fill-opacity=".13"/><text class="svg-group-label" x="'+(x+g.keys.length*cw/2)+'" y="23" text-anchor="middle">'+g.label+'</text>';offset+=g.keys.length;});
-  cols.forEach((c,j)=>svg+='<text class="svg-small" x="'+(L+(j+.5)*cw)+'" y="56" text-anchor="middle">'+c.label+'</text>');
-  data.methods.forEach((m,i)=>{
-    const cy=T+(i+.5)*rowH;svg+='<rect x="0" y="'+(cy-rowH/2)+'" width="'+W+'" height="'+rowH+'" rx="4" fill="'+(i%2?'#f3f5f7':'#fff')+'"/><text class="svg-method" x="'+(L-15)+'" y="'+(cy+5)+'" text-anchor="end">'+esc(m.name)+'</text>';
-    cols.forEach((c,j)=>{const v=m.metrics[c.key],cx=L+(j+.5)*cw,valid=Number.isFinite(v.score),size=valid?9+29*Math.sqrt(v.score):12,rx=valid?size*(.5-.34*v.score):6,rows=[['Metric',metricLabels[c.key]],['Median value',v.raw===null?'Not available':metricNumber(v.raw,c.key)],['Normalized rank',valid?v.score.toFixed(3)+' / 1':'Not comparable'],['Support',v.records+' records · '+v.datasets+' comparable datasets'],['Platforms ranked',v.platforms]],note=(lowerIsBetter(c.key)?'Lower raw values are better. ':c.key==='cell_ratio'?'A raw ratio closer to 1 is better. ':'Higher raw values are better. ')+'Rank 1 is best; the marker is a descriptive rank, not a probability.';
-      svg+='<g class="bubble-hit" '+tipAttrs(m.name,rows,note)+'><rect x="'+(cx-cw/2+1)+'" y="'+(cy-rowH/2+1)+'" width="'+(cw-2)+'" height="'+(rowH-2)+'" fill="transparent"/>'+(valid?'<rect class="bubble-mark" x="'+(cx-size/2)+'" y="'+(cy-size/2)+'" width="'+size+'" height="'+size+'" rx="'+rx+'" fill="'+c.color+'" fill-opacity="'+(.92-.7*v.score)+'" stroke="'+c.color+'" stroke-width="1.3"/>':'<path d="M'+(cx-4)+' '+(cy-4)+'l8 8m-8 0 8-8" stroke="#a4adb5" stroke-width="1.5"/>')+'</g>';
-    });
-  });
-  if(!data.methods.length)svg+='<text class="svg-label" x="540" y="68" text-anchor="middle">No measured methods in this selection.</text>';
-  return '<div class="matrix-block"><div class="matrix-heading"><h4>'+(track==='image'?'Image-based methods':'Transcript / multimodal methods')+'</h4><span>'+data.methods.length+' methods <i>·</i> '+cols.length+' metrics</span></div><div class="plot-scroll">'+svg+'</svg></div></div>';
+function leaderboardMetricLabel(key){return ({image_recall:'Recall',boundary_f1:'Boundary F1',assign_accuracy:'Assignment',count_pearson:'Count r',loc_p95_um:'P95 · µm'})[key]||metricLabels[key];}
+function leaderboardProfile(rows,keys){
+  const best=Object.fromEntries(keys.map(key=>{const values=rows.map(row=>row[key]).filter(Number.isFinite);return [key,values.length&&!metricInterpretation(key).startsWith('Descriptive')?(lowerIsBetter(key)?Math.min(...values):Math.max(...values)):null];}));
+  return '<div class="board-profile"><div class="board-profile-heading"><h3>Metric profile</h3><span>Click a metric to rank</span></div><div class="board-table-scroll" role="region" aria-label="Method metric comparison" tabindex="0"><table class="board-table"><caption class="sr-only">Median metrics by method, ordered by '+esc(selectedMetricLabel())+'. Dataset counts refer to the selected ranking metric.</caption><thead><tr><th scope="col">Method</th>'+keys.map(key=>'<th scope="col"'+(key===state.metric?' class="selected-metric" aria-sort="'+(state.direction==='asc'?'ascending':'descending')+'"':'')+'><button id="profile-metric-'+key+'" data-action="profile-metric" data-id="'+key+'" aria-label="Rank by '+esc(metricLabels[key])+'">'+esc(leaderboardMetricLabel(key))+'<span aria-hidden="true">'+(lowerIsBetter(key)?'↓':'↑')+'</span></button></th>').join('')+'<th scope="col" title="Datasets with a measured value for the selected metric">Datasets</th></tr></thead><tbody>'+rows.map((row,index)=>{
+    const coverage=new Set(row.observations.filter(r=>Number.isFinite(benchmarkEngine.reportValue(r.metrics[state.metric]))).map(r=>r.datasetId)).size;
+    return '<tr><th scope="row"><button data-action="method" data-id="'+row.id+'"><span class="board-position">'+(Number.isFinite(row[state.metric])?String(rows.findIndex(r=>r[state.metric]===row[state.metric])+1).padStart(2,'0'):'—')+'</span>'+esc(row.name)+'</button></th>'+keys.map(key=>'<td class="'+(key===state.metric?'selected-metric ':'')+(Number.isFinite(row[key])&&row[key]===best[key]?'best-value':'')+'">'+metricNumber(row[key],key)+'</td>').join('')+'<td class="board-coverage">'+coverage+'</td></tr>';
+  }).join('')+'</tbody></table></div></div>';
 }
 function renderPaperLeaderboard(){
-  return '<section id="leaderboard" class="paper-section" aria-labelledby="leaderboard-title">'+sectionIntro('02','LEADERBOARD','<span id="leaderboard-title">Performance is a profile.</span>','Compare strengths across complementary metrics, then explore the resources each method needs.')+'<div id="paper-board"><div class="paper-filter-bar"><div class="paper-filters">'+paperSelect('Platform','platform',[['','All platforms'],...platformOrder],paperState.platform)+paperSelect('Dataset','dataset',[['','All datasets'],...datasets.filter(d=>!paperState.platform||d.platform===paperState.platform).map(d=>[d.id,d.name])],paperState.dataset)+paperSelect('Segmentation prior','prior',[['','All states'],['yes','With prior'],['no','Without prior'],['unknown','Unconfirmed']],paperState.prior)+'</div></div><div class="chart-card matrix-card"><div class="matrix-key"><span><b>How to read</b> Larger, squarer markers = better rank.</span><div><span>0</span>'+[0,.25,.5,.75,1].map(v=>'<i style="--size:'+(8+18*Math.sqrt(v))+'px;--round:'+(50-34*v)+'%;--opacity:'+(.92-.7*v)+'"></i>').join('')+'<span>1</span><span class="missing-key">× No comparison</span></div></div>'+['molecule','image'].map(bubbleMatrix).join('')+'<div class="chart-explainer"><h4>Reading the ranks</h4><p>Scores run from 0 (worst) to 1 (best) within matched reference and prior groups, with ties averaged. Results are averaged first within datasets, then across platforms with equal platform weight. Error metrics are reversed; cell-count ratio is scored by distance from 1.</p><p>Image and transcript / multimodal tracks are separate comparisons. Coverage can differ; hover for the median measured value and sample support. A single-method group has no comparative rank.</p></div></div></div><div id="paper-resources">'+renderPaperResources()+'</div></section>';
-}
-const resourceAxes=[{key:'runtimeSeconds',label:'Runtime',unit:'min'},{key:'ramGiB',label:'CPU memory',unit:'GiB'},{key:'vramGiB',label:'GPU memory',unit:'GiB'}];
-function resourceValue(value,key){return value===null?'Not available':numberLabel(key==='runtimeSeconds'?value/60:value,2)+(key==='runtimeSeconds'?' min':' GiB');}
-function resourceSummary(){
-  return methods.map(m=>{
-    const runs=benchmark.resources.filter(r=>r.methodId===m.id&&r.status==='success'&&(!paperState.platform||byDataset(r.datasetId)?.platform===paperState.platform)&&(!paperState.dataset||r.datasetId===paperState.dataset)&&(paperState.resourceMode==='all'||(paperState.resourceMode==='gpu'?r.gpuUsed:!r.gpuUsed)));
-    return {...m,runs:runs.length,gpuRuns:runs.filter(r=>r.gpuUsed).length,values:Object.fromEntries(resourceAxes.map(a=>[a.key,paperQuantile(finiteValues(runs.map(r=>r[a.key])),.5)]))};
-  });
-}
-function resourceRadarData(){
-  const rows=resourceSummary(),maxima=Object.fromEntries(resourceAxes.map(a=>[a.key,Math.max(0,...rows.map(r=>r.values[a.key]??0))]));
-  return {rows,maxima,selected:rows.filter(r=>r.runs&&paperState.resourceMethods.includes(r.id)).map(r=>({...r,scores:resourceAxes.map(a=>r.values[a.key]===null?null:maxima[a.key]>0?r.values[a.key]/maxima[a.key]:0)}))};
-}
-function resourceRadarSvg(data){
-  const W=640,H=365,cx=320,cy=203,radius=139;
-  const point=(i,f)=>{const angle=(-90-i*120)*Math.PI/180;return [cx+Math.cos(angle)*radius*f,cy+Math.sin(angle)*radius*f];};
-  const coords=points=>points.map(p=>p.map(v=>v.toFixed(2)).join(',')).join(' ');
-  let svg='<svg class="data-svg resource-radar-svg" viewBox="0 0 '+W+' '+H+'" role="group" aria-label="Three-axis resource radar: runtime, CPU memory and GPU memory. Smaller values toward the center mean lower resource use.">';
-  for(const fraction of [.25,.5,.75,1])svg+='<polygon class="radar-grid" points="'+coords(resourceAxes.map((a,i)=>point(i,fraction)))+'" fill="'+(fraction===1?'#eef3f7':'none')+'" fill-opacity=".45"/>';
-  resourceAxes.forEach((a,i)=>{const [x,y]=point(i,1);svg+='<line class="radar-axis" x1="'+cx+'" y1="'+cy+'" x2="'+x+'" y2="'+y+'"/>';});
-  for(const fraction of [.25,.5,.75,1])svg+='<text class="radar-tick" x="'+(cx+10)+'" y="'+(cy-radius*fraction+4)+'">'+fraction*100+'%</text>';
-  const labels=[[cx,24],[150,312],[490,312]];
-  resourceAxes.forEach((a,i)=>{const [x,y]=labels[i];svg+='<text class="radar-axis-title" x="'+x+'" y="'+y+'" text-anchor="middle">'+a.label+'</text><text class="svg-small" x="'+x+'" y="'+(y+19)+'" text-anchor="middle">Max '+resourceValue(data.maxima[a.key],a.key)+'</text>';});
-  data.selected.forEach((m,index)=>{
-    const [color]=lineStyles[m.id],dash=['','7 4','2 4'][index%3];
-    const points=m.scores.map((v,i)=>v===null?null:point(i,v)),valid=points.filter(Boolean);
-    const details=resourceAxes.map(a=>[a.label,resourceValue(m.values[a.key],a.key)]).concat([['Successful runs',m.runs],['GPU-used runs',m.gpuRuns]]);
-    svg+='<g class="radar-series" '+tipAttrs(m.name,details,'Medians across the current dataset and execution-mode selection. Axes are scaled independently to the highest method median in this view. Zero GPU memory means no GPU memory was recorded; missing values are not zero.')+'>';
-    if(valid.length===3)svg+='<polygon class="radar-area" points="'+coords(points)+'" fill="'+color+'" fill-opacity=".1" stroke="'+color+'" stroke-width="2.5"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>';
-    else if(valid.length===2)svg+='<polyline points="'+coords(valid)+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-dasharray="3 4"/>';
-    valid.forEach(([x,y])=>svg+='<circle cx="'+x+'" cy="'+y+'" r="4" fill="white" stroke="'+color+'" stroke-width="2.2"/>');
-    svg+='</g>';
-  });
-  if(!data.selected.length)svg+='<text class="svg-label" x="'+cx+'" y="'+(H-12)+'" text-anchor="middle">Select a method with resource data.</text>';
-  return svg+'</svg>';
-}
-function renderPaperResources(){
-  const data=resourceRadarData(),runs=data.rows.reduce((n,r)=>n+r.runs,0),scope=paperState.dataset?byDataset(paperState.dataset).name:paperState.platform||'All datasets';
-  return '<div class="resource-comparison"><aside class="resource-story"><p class="paper-kicker">THE COST OF A CELL BOUNDARY · FIGURE 6</p><h3>Accuracy meets<br>practical constraints.</h3><p>Compare the time, CPU memory and GPU memory required to draw a cell boundary.</p><div class="resource-reading"><strong>Closer to the center, lower cost.</strong><p>Each axis starts at zero and is scaled to the highest method median in this view. Hover, focus or tap a profile to see its measured values.</p></div><p class="resource-coverage"><strong>'+runs+'</strong> successful runs · '+data.rows.filter(r=>r.runs).length+' methods</p>'+paperSelect('Execution mode','resourceMode',[['all','All runs'],['gpu','GPU used'],['cpu','CPU only']],paperState.resourceMode)+'<div class="resource-hardware"><h4>Benchmark hardware</h4><p>64 physical CPU cores · ~1 TiB RAM<br>8 × RTX 4090 D · 24,564 MiB per GPU</p></div><p class="resource-footnote">Runtime includes executed preprocessing, training, segmentation and postprocessing. Memory is task RAM and peak memory per GPU. The resource snapshot contains 451 records; the manuscript reports 445 completed tasks from a different snapshot.</p></aside><div class="chart-card resource-radar-card"><div class="chart-card-heading"><div><h4>Resource profiles</h4><p>'+esc(scope)+' · Median over successful runs</p></div><span>'+data.selected.length+' selected</span></div>'+resourceRadarSvg(data)+'<div class="resource-methods" role="group" aria-label="Methods in resource radar">'+data.rows.map(m=>{const selected=data.selected.findIndex(r=>r.id===m.id),style=selected<0?'solid':['solid','dashed','dotted'][selected%3];return '<button id="resource-method-'+m.id+'" data-paper-action="resource-method" data-value="'+m.id+'" aria-pressed="'+(selected>=0)+'"'+(!m.runs?' disabled title="No successful runs in this selection"':'')+'><i style="--series-color:'+lineStyles[m.id][0]+';border-top-style:'+style+'"></i>'+esc(m.name)+(!m.runs?' <span>n/a</span>':'')+'</button>';}).join('')+'</div><div class="resource-actions"><span>Select methods to compare</span><button data-paper-action="resource-reset">Reset selection</button></div><p class="resource-chart-note">100% = the highest method median on that axis, not the hardware limit. Axes stay fixed when toggling methods. Missing measurements are omitted.</p></div></div>';
+  const options=metricOptions();
+  if(!options.some(([key])=>key===state.metric)){state.metric=options[0]?.[0]||'';state.direction=lowerIsBetter(state.metric)?'asc':'desc';}
+  const rows=options.length?rankRows():[],records=rows.flatMap(row=>row.observations),coverage=new Set(records.map(row=>row.datasetId)).size;
+  return '<section id="leaderboard" class="paper-section" aria-labelledby="leaderboard-title">'+sectionIntro('leaderboard','Leaderboard')+
+    '<div class="leaderboard-workspace"><div class="leaderboard-controls"><div class="board-track-row">'+trackHighlights()+'<p class="board-scope"><strong>'+rows.length+'</strong> '+(rows.length===1?'method':'methods')+' <span>·</span> <strong>'+coverage+'</strong> '+(coverage===1?'dataset':'datasets')+' <span>·</span> '+records.length+' '+(records.length===1?'record':'records')+'</p></div><div class="ranking-filters">'+
+    selectControl('Metric','metric',options,state.metric)+
+    selectControl('Platform','platform',[['','All platforms'],...platformOrder],state.platform)+
+    selectControl('Dataset','dataset',[['','All datasets'],...datasets.filter(d=>!state.platform||d.platform===state.platform).map(d=>[d.id,d.name])],state.dataset)+
+    selectControl('Segmentation prior','prior',[['','All states'],['yes','With prior'],['no','Without prior'],['unknown','Unconfirmed']],state.prior)+
+    '</div></div><div class="board-comparison">'+(rows.length?'<div class="leaderboard-bars">'+chart(rows)+'</div>'+leaderboardProfile(rows,leaderboardProfileKeys(options)):'<div class="empty-compact" role="status"><strong>No comparable measurements</strong><button class="text-button" data-action="reset-filters">Clear filters</button></div>')+
+    '</div><div class="leaderboard-note"><span>Median measured values · Dataset coverage varies.</span><span>Bold = best in column · Select a method for details</span></div></div></section>';
 }
 
 const galleryTissues=[['all','All tissues'],['merfish-colon','Colon · MERFISH'],['merfish-liver','Liver · MERFISH'],['xenium-breast-cancer','Breast cancer · Xenium'],['xenium-ccRCC','Kidney · Xenium'],['xenium-lymph','Lymph node · Xenium']];
@@ -192,7 +108,7 @@ function renderPaperGallery(){
   const missing=paperState.tissue==='all'?[]:methods.filter(m=>!collection.some(r=>r.methodId===m.id));
   let content=rows.map(r=>'<article class="gallery-slide"><div class="gallery-slide-title"><span>'+esc(byMethod(r.methodId).name)+'</span><span>'+esc(r.platform)+'</span></div><button class="gallery-image-button" data-action="image" data-id="'+esc(r.id)+'" aria-label="Enlarge '+esc(byMethod(r.methodId).name+' · '+galleryLabel(r))+'"><img src="'+imagePath(r.thumbnail)+'" width="'+r.width+'" height="'+r.height+'" alt="'+esc(byMethod(r.methodId).name+' visualization · '+galleryLabel(r))+'" loading="lazy" decoding="async"><span>Enlarge figure '+glyph('expand')+'</span></button><div class="gallery-slide-caption"><strong>'+esc(galleryLabel(r))+'</strong><span>Supplied visualization · '+esc(byMethod(r.methodId).name)+'</span></div></article>').join('');
   if(!rows.length)content='<div class="gallery-placeholder" role="status">'+glyph('image')+'<h3>'+(state.imageStatus==='error'?'Images could not be loaded':state.imageStatus==='loading'?'Loading figures…':'No figure for this selection')+'</h3><p>'+(state.imageStatus==='ready'?'This method was not included in the supplied tissue collection. Select another method or tissue.':'Please try again.')+'</p>'+(state.imageStatus==='error'?'<button class="paper-secondary" data-action="retry-images">Try again</button>':'')+'</div>';
-  return '<section id="gallery" class="paper-section" aria-labelledby="gallery-title">'+sectionIntro('03','SEGMENTATION GALLERY','<span id="gallery-title">See the boundaries for yourself.</span>','Explore '+state.images.length+' visualizations across five tissue collections. Choose a tissue, slide through methods, and enlarge any figure for a closer look.')+'<div class="gallery-explorer"><div class="gallery-explorer-toolbar"><div class="tissue-tabs" role="group" aria-label="Gallery tissue">'+galleryTissues.map(([id,label])=>'<button id="tissue-'+id+'" data-paper-action="tissue" data-value="'+id+'" aria-pressed="'+(paperState.tissue===id)+'">'+label+'</button>').join('')+'</div></div><div class="gallery-subtoolbar"><div><span class="gallery-live-dot"></span><strong>'+rows.length+' '+(rows.length===1?'figure':'figures')+'</strong><span>Scroll to compare · Select to enlarge</span></div>'+selectControl('Method','method',[['','All methods'],...methods.map(m=>[m.id,m.name])],state.visual.method,'visual')+'</div><div id="gallery-track" class="gallery-track" tabindex="0" aria-label="Segmentation figure carousel; use left and right arrow keys">'+content+'</div><div class="gallery-bottom"><p>'+(missing.length?'Not supplied for this tissue: '+esc(missing.map(m=>m.name).join(', '))+'.':'Colors follow each supplied visualization; they are not a shared cell-type legend across methods.')+'</p><div class="gallery-arrows"><button data-paper-action="gallery-prev" aria-label="Previous figures"'+(rows.length<2?' disabled':'')+'>'+glyph('arrow')+'</button><button data-paper-action="gallery-next" aria-label="Next figures"'+(rows.length<2?' disabled':'')+'>'+glyph('arrow')+'</button></div></div></div></section>';
+  return '<section id="gallery" class="paper-section" aria-labelledby="gallery-title">'+sectionIntro('gallery','Gallery')+'<div class="gallery-explorer"><div class="gallery-explorer-toolbar"><div class="tissue-tabs" role="group" aria-label="Gallery tissue">'+galleryTissues.map(([id,label])=>'<button id="tissue-'+id+'" data-paper-action="tissue" data-value="'+id+'" aria-pressed="'+(paperState.tissue===id)+'">'+label+'</button>').join('')+'</div></div><div class="gallery-subtoolbar"><div><span class="gallery-live-dot"></span><strong>'+rows.length+' '+(rows.length===1?'figure':'figures')+'</strong><span>Scroll to compare · Select to enlarge</span></div>'+selectControl('Method','method',[['','All methods'],...methods.map(m=>[m.id,m.name])],state.visual.method,'visual')+'</div><div id="gallery-track" class="gallery-track" tabindex="0" aria-label="Segmentation figure carousel; use left and right arrow keys">'+content+'</div><div class="gallery-bottom"><p>'+(missing.length?'Not supplied for this tissue: '+esc(missing.map(m=>m.name).join(', '))+'.':'Colors follow each supplied visualization; they are not a shared cell-type legend across methods.')+'</p><div class="gallery-arrows"><button data-paper-action="gallery-prev" aria-label="Previous figures"'+(rows.length<2?' disabled':'')+'>'+glyph('arrow')+'</button><button data-paper-action="gallery-next" aria-label="Next figures"'+(rows.length<2?' disabled':'')+'>'+glyph('arrow')+'</button></div></div></div></section>';
 }
 
 const lineStyles={proseg:['#e38032',''],ucs:['#448bb8',''],cellpose:['#173e65',''],mesmer:['#7e929e',''],cellist:['#ea873c','6 4'],boms:['#785c8d',''],genesegnet:['#61816e',''],comseg:['#b56e5d',''],baysor:['#997323',''],bering:['#3a8b8a',''],dissect:['#906b4b',''],cellpose3:['#c58d7c','6 3'],cellsam:['#6685a2','4 3'],stardist:['#7b7d83','2 3'],cellotype:['#779047',''],unseg:['#39849c','3 3']};
@@ -222,14 +138,14 @@ function downstreamSvg(){
 function renderDownstream(){
   const data=paperData.downstream,selected=selectedDownstream(),available=data.series.filter(s=>s.cases[paperState.lineage]);
   const missing=data.series.filter(s=>!s.cases[paperState.lineage]).map(s=>byMethod(s.methodId).name);
-  return '<section id="downstream" class="paper-section" aria-labelledby="downstream-title">'+sectionIntro('04','DOWNSTREAM IMPACT','<span id="downstream-title">Small shifts. Biological consequences.</span>','A cell boundary determines which transcripts become part of its expression profile.')+
-    '<div class="downstream-layout"><aside class="downstream-story"><span class="figure-number">FIGURE 4F</span><h3>Where does a cell’s<br>signal end?</h3><p>Trace how foreign-lineage transcripts accumulate from inside a cell to beyond its predicted boundary.</p><div class="boundary-stages"><span>Inside the cell<strong>−10 µm</strong></span>'+glyph('arrow')+'<span>Beyond the boundary<strong>+3.3 µm</strong></span></div><div class="measured-scope"><strong>Measured distance profiles</strong><p>'+data.distances.length+' recorded samples per curve. Hover, focus or tap along the plot to compare methods at the same distance. The vertical line marks the cell boundary.</p></div></aside>'+
+  return '<section id="downstream" class="paper-section" aria-labelledby="downstream-title">'+sectionIntro('downstream','Downstream')+
+    '<div class="downstream-layout"><aside class="downstream-story"><h3>Transcript contamination</h3><p>Trace how foreign-lineage transcripts accumulate from inside a cell to beyond its predicted boundary.</p><div class="boundary-stages"><span>Inside the cell<strong>−10 µm</strong></span>'+glyph('arrow')+'<span>Beyond the boundary<strong>+3.3 µm</strong></span></div><div class="measured-scope"><strong>Measured distance profiles</strong><p>'+data.distances.length+' recorded samples per curve. Hover, focus or tap along the plot to compare methods at the same distance. The vertical line marks the cell boundary.</p></div></aside>'+
     '<div class="chart-card downstream-chart"><div class="chart-card-heading"><div><h4>Boundary-associated contamination</h4><p>'+available.length+' methods with data · '+selected.length+' selected</p></div><div class="pill-controls" role="group" aria-label="Cell lineage">'+data.lineages.map(([v,l])=>'<button id="lineage-'+v+'" data-paper-action="lineage" data-value="'+v+'" aria-pressed="'+(paperState.lineage===v)+'">'+l+'</button>').join('')+'</div></div><div class="plot-scroll">'+downstreamSvg()+'</div>'+
     '<div class="line-legend" role="group" aria-label="Methods in contamination plot">'+data.series.map(s=>{const exists=!!s.cases[paperState.lineage];return '<button id="line-'+s.methodId+'" data-paper-action="line-method" data-value="'+s.methodId+'" aria-pressed="'+(exists&&paperState.lineMethods.includes(s.methodId))+'"'+(!exists?' disabled title="No record for this lineage"':'')+'><i style="--series-color:'+lineStyles[s.methodId][0]+';border-top-style:'+(lineStyles[s.methodId][1]?'dashed':'solid')+'"></i>'+esc(byMethod(s.methodId).name)+(!exists?' <span>n/a</span>':'')+'</button>';}).join('')+'</div><div class="line-actions"><button data-paper-action="line-all">Show all available</button><button data-paper-action="line-reset">Reset selection</button></div>'+
     (missing.length?'<p class="missing-data-note">No Epi / Tumor record for '+esc(missing.join(' or '))+'.</p>':'')+
     '</div></div></section>';
 }
-function renderPaperRecommendation(){return '<section id="recommendation" class="paper-section recommendation-section" aria-labelledby="recommendation-title">'+sectionIntro('05','RECOMMENDATION','<span id="recommendation-title">Find a method for your next experiment.</span>','SpaSegCompass connects your inputs, analysis goals and available resources with the benchmark evidence.')+renderRecommend()+'</section>';}
+function renderPaperRecommendation(){return '<section id="recommendation" class="paper-section recommendation-section" aria-labelledby="recommendation-title">'+sectionIntro('recommendation','Recommendation')+renderRecommend()+'</section>';}
 function renderPaperPage(){return '<div class="paper-page">'+renderOverview()+renderPaperLeaderboard()+renderPaperGallery()+renderDownstream()+renderPaperRecommendation()+'</div>';}
 
 let tooltipPinned=false,paperNavigationBound=false,paperNavigationPending=false;
@@ -262,7 +178,7 @@ function setupPaperNavigation(){
   updatePaperNavigation();
 }
 
-function scrollToPaperHash(){const aliases={'#/':'overview','#/recommend':'recommendation','#/visuals':'gallery','#/explore':'dataset-landscape','#research-form':'research-form'};const id=aliases[location.hash]||location.hash.slice(1);document.getElementById(id)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}
+function scrollToPaperHash(){const aliases={'#/':'overview','#/recommend':'recommendation','#/visuals':'gallery','#/explore':'dataset-landscape','#research-form':'research-form'};const id=aliases[location.hash]||location.hash.slice(1);if(id==='dataset-landscape')setOverviewTab('datasets');document.getElementById(id)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}
 function refreshPaperPart(id,html,focusId){const el=document.getElementById(id);if(!el)return;hidePaperTip();el.outerHTML=html;if(focusId)document.getElementById(focusId)?.focus({preventScroll:true});setupPaperNavigation();}
 function hidePaperTip(){const tip=document.getElementById('chart-tooltip');if(tip){tip.hidden=true;tip.innerHTML='';}tooltipPinned=false;document.querySelectorAll('.tip-active').forEach(n=>n.classList.remove('tip-active'));}
 function showPaperTip(target,event){
@@ -281,13 +197,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')hidePaperTip();const
 document.addEventListener('click',e=>{
   const tip=e.target.closest?.('[data-tip]');if(tip){showPaperTip(tip,e);tooltipPinned=true;return;}if(!e.target.closest?.('#chart-tooltip'))hidePaperTip();
   const b=e.target.closest?.('[data-paper-action]');if(!b)return;const action=b.dataset.paperAction,value=b.dataset.value,id=b.id;
-  if(action==='tissue'){paperState.tissue=value;refreshPaperPart('gallery',renderPaperGallery(),id);}
+  if(action==='overview-tab'){setOverviewTab(value,true);}
+  else if(action==='tissue'){paperState.tissue=value;refreshPaperPart('gallery',renderPaperGallery(),id);}
   else if(action==='gallery-next'||action==='gallery-prev'){const el=document.getElementById('gallery-track');el.scrollBy({left:(action==='gallery-next'?1:-1)*el.clientWidth*.8,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});}
-  else if(action==='resource-method'||action==='resource-reset'){
-    paperState.resourceMethods=action==='resource-reset'?['cellpose','bering','comseg']:paperState.resourceMethods.includes(value)?paperState.resourceMethods.filter(x=>x!==value):[...paperState.resourceMethods,value];
-    hidePaperTip();document.getElementById('paper-resources').innerHTML=renderPaperResources();
-    if(id)document.getElementById(id)?.focus({preventScroll:true});
-  }
   else if(action==='lineage'||action==='line-method'||action==='line-all'||action==='line-reset'){
     if(action==='lineage')paperState.lineage=value;
     if(action==='line-method')paperState.lineMethods=paperState.lineMethods.includes(value)?paperState.lineMethods.filter(x=>x!==value):[...paperState.lineMethods,value];
@@ -296,9 +208,9 @@ document.addEventListener('click',e=>{
     refreshPaperPart('downstream',renderDownstream(),id);
   }
 });
-document.addEventListener('change',e=>{
-  const key=e.target.dataset.paperSelect;if(!key)return;paperState[key]=e.target.value;
-  if(key==='platform')paperState.dataset='';
-  if(key.startsWith('resource')){document.getElementById('paper-resources').innerHTML=renderPaperResources();document.getElementById('paper-'+key)?.focus({preventScroll:true});}
-  else refreshPaperPart('leaderboard',renderPaperLeaderboard(),'paper-'+key);
+document.addEventListener('keydown',e=>{
+  const tab=e.target.closest?.('[data-paper-action="overview-tab"]');
+  if(!tab||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
+  e.preventDefault();
+  setOverviewTab(e.key==='Home'?'metrics':e.key==='End'?'datasets':paperState.overviewTab==='metrics'?'datasets':'metrics',true);
 });
